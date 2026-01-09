@@ -17,6 +17,15 @@ interface DragState {
   initialEndDate: Date | null;
 }
 
+// Column data for week/month views
+interface ColumnData {
+  label: string;
+  subLabel?: string;
+  startDate: Date;
+  endDate: Date;
+  isCurrentPeriod: boolean;
+}
+
 export function GanttView() {
   const { t, locale } = useI18n();
   const { tasks, updateTaskApi, showCompletedTasks } = useTaskStore();
@@ -28,14 +37,12 @@ export function GanttView() {
   });
   const [dragState, setDragState] = useState<DragState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartAreaRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // Track container width for responsive cell sizing
+  // Track container width for responsive sizing
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
-        // Subtract task column width (220px) and some padding
         setContainerWidth(containerRef.current.clientWidth - 220);
       }
     };
@@ -51,34 +58,109 @@ export function GanttView() {
     return filtered.filter((task) => task.startDate || task.dueDate);
   }, [tasks, showCompletedTasks]);
 
-  // Fixed cell widths per view mode
-  const cellWidth = viewMode === 'day' ? 40 : viewMode === 'week' ? 20 : 20;
+  // Fixed cell width for all view modes
+  const cellWidth = 40;
 
-  // Calculate how many days can fit in the container
-  const visibleDays = useMemo(() => {
-    if (containerWidth <= 0) {
-      // Default fallback values
-      return viewMode === 'day' ? 14 : viewMode === 'week' ? 30 : 90;
+  // Calculate visible columns based on container width
+  const visibleColumns = useMemo(() => {
+    if (containerWidth <= 0) return 10;
+    return Math.max(Math.floor(containerWidth / cellWidth), 5);
+  }, [containerWidth, cellWidth]);
+
+  // Generate columns based on view mode
+  const columns = useMemo((): ColumnData[] => {
+    const result: ColumnData[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (viewMode === 'day') {
+      // Day mode: each column is 1 day
+      const current = new Date(startDate);
+      for (let i = 0; i < visibleColumns; i++) {
+        const dayStart = new Date(current);
+        const dayEnd = new Date(current);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const dayNames = locale.startsWith('ja')
+          ? ['日', '月', '火', '水', '木', '金', '土']
+          : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+        result.push({
+          label: `${current.getDate()}`,
+          subLabel: dayNames[current.getDay()],
+          startDate: dayStart,
+          endDate: dayEnd,
+          isCurrentPeriod: current.toDateString() === today.toDateString(),
+        });
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (viewMode === 'week') {
+      // Week mode: each column is 1 week
+      // Start from the Monday of the start date's week
+      const current = new Date(startDate);
+      const dayOfWeek = current.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust to Monday
+      current.setDate(current.getDate() + diff);
+
+      for (let i = 0; i < visibleColumns; i++) {
+        const weekStart = new Date(current);
+        const weekEnd = new Date(current);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+
+        const isCurrentWeek = today >= weekStart && today <= weekEnd;
+
+        result.push({
+          label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`,
+          subLabel: `W${getWeekNumber(weekStart)}`,
+          startDate: weekStart,
+          endDate: weekEnd,
+          isCurrentPeriod: isCurrentWeek,
+        });
+        current.setDate(current.getDate() + 7);
+      }
+    } else {
+      // Month mode: each column is 1 month
+      const current = new Date(startDate);
+      current.setDate(1); // Start from 1st of month
+
+      for (let i = 0; i < visibleColumns; i++) {
+        const monthStart = new Date(current);
+        const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        const isCurrentMonth = today.getFullYear() === current.getFullYear() &&
+          today.getMonth() === current.getMonth();
+
+        const monthName = current.toLocaleDateString(locale, { month: 'short' });
+
+        result.push({
+          label: monthName,
+          subLabel: `${current.getFullYear()}`,
+          startDate: monthStart,
+          endDate: monthEnd,
+          isCurrentPeriod: isCurrentMonth,
+        });
+        current.setMonth(current.getMonth() + 1);
+      }
     }
-    const days = Math.floor(containerWidth / cellWidth);
-    // Ensure at least some minimum days are shown
-    return Math.max(days, 7);
-  }, [containerWidth, cellWidth, viewMode]);
 
-  // Calculate date range based on visible days
-  const dateRange = useMemo(() => {
-    const days: Date[] = [];
-    const current = new Date(startDate);
+    return result;
+  }, [startDate, viewMode, visibleColumns, locale]);
 
-    for (let i = 0; i < visibleDays; i++) {
-      days.push(new Date(current));
-      current.setDate(current.getDate() + 1);
-    }
+  // Get week number
+  function getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
 
-    return days;
-  }, [startDate, visibleDays]);
-
-  const endDate = dateRange[dateRange.length - 1];
+  // Calculate range start/end from columns
+  const rangeStart = columns[0]?.startDate || startDate;
+  const rangeEnd = columns[columns.length - 1]?.endDate || startDate;
+  const totalRangeMs = rangeEnd.getTime() - rangeStart.getTime();
+  const totalChartWidth = columns.length * cellWidth;
 
   // Get drag offset in pixels for a specific task
   const getDragOffset = useCallback((taskId: string, type: 'left' | 'width') => {
@@ -107,49 +189,67 @@ export function GanttView() {
     const effectiveStart = taskStart || taskEnd!;
     const effectiveEnd = taskEnd || taskStart!;
 
-    const rangeStart = startDate.getTime();
-    const rangeEnd = endDate.getTime();
-    const rangeTotal = rangeEnd - rangeStart;
+    // Clamp to visible range
+    const taskStartTime = Math.max(effectiveStart.getTime(), rangeStart.getTime());
+    const taskEndTime = Math.min(effectiveEnd.getTime(), rangeEnd.getTime());
 
-    const taskStartTime = Math.max(effectiveStart.getTime(), rangeStart);
-    const taskEndTime = Math.min(effectiveEnd.getTime(), rangeEnd);
+    if (taskEndTime < rangeStart.getTime() || taskStartTime > rangeEnd.getTime()) return null;
 
-    if (taskEndTime < rangeStart || taskStartTime > rangeEnd) return null;
-
-    const totalWidth = dateRange.length * cellWidth;
-    const leftPx = ((taskStartTime - rangeStart) / rangeTotal) * totalWidth;
-    const widthPx = ((taskEndTime - taskStartTime) / rangeTotal) * totalWidth;
+    const leftPx = ((taskStartTime - rangeStart.getTime()) / totalRangeMs) * totalChartWidth;
+    const widthPx = ((taskEndTime - taskStartTime) / totalRangeMs) * totalChartWidth;
 
     return {
       leftPx,
       widthPx: Math.max(widthPx, 20),
     };
-  }, [startDate, endDate, dateRange.length, cellWidth]);
+  }, [rangeStart, rangeEnd, totalRangeMs, totalChartWidth]);
 
   const handlePrev = () => {
     const newDate = new Date(startDate);
-    const offset = viewMode === 'day' ? 7 : viewMode === 'week' ? 14 : 30;
-    newDate.setDate(newDate.getDate() - offset);
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() - 7);
+    } else if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() - 28); // 4 weeks
+    } else {
+      newDate.setMonth(newDate.getMonth() - 3); // 3 months
+    }
     setStartDate(newDate);
   };
 
   const handleNext = () => {
     const newDate = new Date(startDate);
-    const offset = viewMode === 'day' ? 7 : viewMode === 'week' ? 14 : 30;
-    newDate.setDate(newDate.getDate() + offset);
+    if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() + 7);
+    } else if (viewMode === 'week') {
+      newDate.setDate(newDate.getDate() + 28);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 3);
+    }
     setStartDate(newDate);
   };
 
   const handleToday = () => {
     const today = new Date();
-    today.setDate(today.getDate() - 7);
+    if (viewMode === 'day') {
+      today.setDate(today.getDate() - 7);
+    } else if (viewMode === 'week') {
+      today.setDate(today.getDate() - 14);
+    } else {
+      today.setMonth(today.getMonth() - 1);
+    }
     setStartDate(today);
   };
 
-  // Drag handlers
+  // Pixels per day for drag calculations
   const pixelsPerDay = useMemo(() => {
-    return cellWidth;
-  }, [cellWidth]);
+    if (viewMode === 'day') {
+      return cellWidth; // 1 cell = 1 day
+    } else if (viewMode === 'week') {
+      return cellWidth / 7; // 1 cell = 7 days
+    } else {
+      return cellWidth / 30; // 1 cell ≈ 30 days
+    }
+  }, [cellWidth, viewMode]);
 
   const handleDragStart = useCallback((
     e: React.MouseEvent,
@@ -171,8 +271,6 @@ export function GanttView() {
 
   const handleDragMove = useCallback((e: React.MouseEvent) => {
     if (!dragState) return;
-
-    // Just update the currentX to track mouse position
     setDragState(prev => prev ? { ...prev, currentX: e.clientX } : null);
   }, [dragState]);
 
@@ -185,7 +283,6 @@ export function GanttView() {
       return;
     }
 
-    // Calculate delta in days from pixel movement
     const deltaX = dragState.currentX - dragState.initialX;
     const deltaDays = Math.round(deltaX / pixelsPerDay);
 
@@ -194,7 +291,6 @@ export function GanttView() {
       return;
     }
 
-    // Calculate new dates from initial dates
     let newStartDate = dragState.initialStartDate ? new Date(dragState.initialStartDate) : null;
     let newEndDate = dragState.initialEndDate ? new Date(dragState.initialEndDate) : null;
 
@@ -227,7 +323,6 @@ export function GanttView() {
         break;
     }
 
-    // Send update to backend
     updateTaskApi(dragState.taskId, {
       startDate: newStartDate ? newStartDate.toISOString().split('T')[0] : undefined,
       dueDate: newEndDate ? newEndDate.toISOString().split('T')[0] : undefined,
@@ -236,7 +331,6 @@ export function GanttView() {
     setDragState(null);
   }, [dragState, tasks, updateTaskApi, pixelsPerDay]);
 
-  // Global mouse event handlers for drag
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (dragState) {
       handleDragMove(e);
@@ -315,72 +409,35 @@ export function GanttView() {
         onMouseLeave={handleMouseLeave}
       >
         <div className="min-w-[600px]">
-          {/* Header with dates - Month row */}
+          {/* Header row */}
           <div className="flex border-b border-border sticky top-0 bg-background z-20">
             <div className="w-[220px] shrink-0 p-2 border-r border-border text-sm font-medium flex items-center">
               {t('task.task')}
             </div>
             <div className="flex-1 flex">
-              {(() => {
-                // Group dates by month for month header
-                const monthGroups: { month: string; count: number; year: number }[] = [];
-                let currentMonth = '';
-                let currentYear = 0;
-
-                dateRange.forEach((date) => {
-                  const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-                  const monthName = date.toLocaleDateString(locale, { month: 'short' });
-
-                  if (monthKey !== currentMonth) {
-                    currentMonth = monthKey;
-                    currentYear = date.getFullYear();
-                    monthGroups.push({ month: monthName, count: 1, year: currentYear });
-                  } else {
-                    monthGroups[monthGroups.length - 1].count++;
-                  }
-                });
-
-                return monthGroups.map((group, idx) => (
-                  <div
-                    key={idx}
-                    className="text-center text-xs font-medium border-r border-border py-1 bg-muted/30"
-                    style={{ width: group.count * cellWidth, minWidth: group.count * cellWidth }}
-                  >
-                    {group.month} {group.year}
-                  </div>
-                ));
-              })()}
-            </div>
-          </div>
-
-          {/* Header with dates - Day row */}
-          <div className="flex border-b border-border sticky top-[28px] bg-background z-10">
-            <div className="w-[220px] shrink-0 border-r border-border" />
-            <div className="flex-1 flex" ref={chartAreaRef}>
-              {dateRange.map((date, index) => {
-                const isToday = date.toDateString() === new Date().toDateString();
-                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                const dayNames = locale.startsWith('ja')
-                  ? ['日', '月', '火', '水', '木', '金', '土']
-                  : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+              {columns.map((col, idx) => {
+                const isWeekend = viewMode === 'day' &&
+                  (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
 
                 return (
                   <div
-                    key={index}
+                    key={idx}
                     className={cn(
                       'text-center text-xs border-r border-border py-1',
-                      isToday && 'bg-primary/20',
+                      col.isCurrentPeriod && 'bg-primary/20',
                       isWeekend && 'bg-muted/50'
                     )}
                     style={{ width: cellWidth, minWidth: cellWidth }}
                   >
-                    <div className="font-medium">{date.getDate()}</div>
-                    <div className={cn(
-                      'text-muted-foreground',
-                      isWeekend && 'text-red-400'
-                    )}>
-                      {dayNames[date.getDay()]}
-                    </div>
+                    <div className="font-medium">{col.label}</div>
+                    {col.subLabel && (
+                      <div className={cn(
+                        'text-muted-foreground',
+                        isWeekend && 'text-red-400'
+                      )}>
+                        {col.subLabel}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -405,15 +462,16 @@ export function GanttView() {
                 <div className="flex-1 relative h-[56px]">
                   {/* Grid lines */}
                   <div className="absolute inset-0 flex">
-                    {dateRange.map((date, index) => {
-                      const isToday = date.toDateString() === new Date().toDateString();
-                      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                    {columns.map((col, index) => {
+                      const isWeekend = viewMode === 'day' &&
+                        (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+
                       return (
                         <div
                           key={index}
                           className={cn(
                             'border-r border-border',
-                            isToday && 'bg-primary/10',
+                            col.isCurrentPeriod && 'bg-primary/10',
                             isWeekend && 'bg-muted/30'
                           )}
                           style={{ width: cellWidth, minWidth: cellWidth }}
