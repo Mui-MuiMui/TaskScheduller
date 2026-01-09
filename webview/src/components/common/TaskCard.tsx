@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import type { Task } from '@/types';
 import { Card, CardContent, Badge, Progress } from '@/components/ui';
 import { Calendar, User, Clock, Flag } from 'lucide-react';
@@ -10,21 +11,19 @@ interface TaskCardProps {
   isDragging?: boolean;
 }
 
-export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
-  // Calculate due date status
-  let dueDateStatus: 'normal' | 'warning' | 'overdue' = 'normal';
-  if (task.dueDate && task.status !== 'done') {
+export const TaskCard = memo(function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
+  // Calculate due date status - memoized to avoid recalculation
+  const dueDateStatus = useMemo(() => {
+    if (!task.dueDate || task.status === 'done') return 'normal' as const;
     const dueDate = new Date(task.dueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
     const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) {
-      dueDateStatus = 'overdue'; // Past due - red
-    } else if (diffDays === 0) {
-      dueDateStatus = 'warning'; // Due today - yellow
-    }
-  }
+    if (diffDays < 0) return 'overdue' as const;
+    if (diffDays === 0) return 'warning' as const;
+    return 'normal' as const;
+  }, [task.dueDate, task.status]);
 
   return (
     <Card
@@ -95,4 +94,4 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
       </CardContent>
     </Card>
   );
-}
+});

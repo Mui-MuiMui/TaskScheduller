@@ -15,6 +15,7 @@
   "task.task": "タスク",
   "status.todo": "未着手",
   "status.inProgress": "進行中",
+  "status.onHold": "保留中",
   "status.done": "完了",
   "priority.low": "低",
   "priority.medium": "中",

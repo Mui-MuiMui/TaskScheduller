@@ -1,7 +1,7 @@
 // Re-export shared types from extension
 // These types mirror the extension's models/types.ts
 
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskStatus = 'todo' | 'in_progress' | 'on_hold' | 'done';
 export type Priority = 1 | 2 | 3 | 4;
 export type DependencyType =
   | 'finish_to_start'
@@ -69,6 +69,7 @@ export type ViewType = 'todo' | 'kanban' | 'gantt';
 export const KANBAN_COLUMNS: { status: TaskStatus; labelKey: string }[] = [
   { status: 'todo', labelKey: 'status.todo' },
   { status: 'in_progress', labelKey: 'status.inProgress' },
+  { status: 'on_hold', labelKey: 'status.onHold' },
   { status: 'done', labelKey: 'status.done' },
 ];
 
@@ -89,5 +90,6 @@ export const PRIORITY_COLORS: Record<Priority, string> = {
 export const STATUS_COLORS: Record<TaskStatus, string> = {
   todo: 'text-blue-500',
   in_progress: 'text-yellow-500',
+  on_hold: 'text-gray-500',
   done: 'text-green-500',
 };

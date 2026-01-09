@@ -139,6 +139,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                 <SelectContent>
                   <SelectItem value="todo">{t('status.todo')}</SelectItem>
                   <SelectItem value="in_progress">{t('status.inProgress')}</SelectItem>
+                  <SelectItem value="on_hold">{t('status.onHold')}</SelectItem>
                   <SelectItem value="done">{t('status.done')}</SelectItem>
                 </SelectContent>
               </Select>

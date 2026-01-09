@@ -1,5 +1,5 @@
 // Task Status
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskStatus = 'todo' | 'in_progress' | 'on_hold' | 'done';
 
 // Priority: 1=Low, 2=Medium, 3=High, 4=Urgent
 export type Priority = 1 | 2 | 3 | 4;
@@ -114,6 +114,7 @@ export interface CreateDependencyDto {
 export const KANBAN_COLUMNS: { status: TaskStatus; labelKey: string }[] = [
   { status: 'todo', labelKey: 'status.todo' },
   { status: 'in_progress', labelKey: 'status.inProgress' },
+  { status: 'on_hold', labelKey: 'status.onHold' },
   { status: 'done', labelKey: 'status.done' },
 ];
 

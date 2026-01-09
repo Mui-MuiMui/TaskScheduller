@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
@@ -13,8 +13,11 @@ export function KanbanView() {
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Filter tasks based on showCompletedTasks
-  const filteredTasks = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+  // Filter tasks based on showCompletedTasks - memoized
+  const filteredTasks = useMemo(() =>
+    showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done'),
+    [tasks, showCompletedTasks]
+  );
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -57,10 +60,10 @@ export function KanbanView() {
     reorderTasks(taskIds, destStatus);
   };
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setIsEditDialogOpen(true);
-  };
+  }, []);
 
   return (
     <>

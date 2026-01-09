@@ -278,9 +278,8 @@ export function GanttView() {
   }, []);
 
   const handleDragMove = useCallback((e: React.MouseEvent) => {
-    if (!dragState) return;
     setDragState(prev => prev ? { ...prev, currentX: e.clientX } : null);
-  }, [dragState]);
+  }, []);
 
   const handleDragEnd = useCallback(() => {
     if (!dragState) return;
@@ -340,22 +339,16 @@ export function GanttView() {
   }, [dragState, tasks, updateTaskApi, pixelsPerDay]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (dragState) {
-      handleDragMove(e);
-    }
-  }, [dragState, handleDragMove]);
+    handleDragMove(e);
+  }, [handleDragMove]);
 
   const handleMouseUp = useCallback(() => {
-    if (dragState) {
-      handleDragEnd();
-    }
-  }, [dragState, handleDragEnd]);
+    handleDragEnd();
+  }, [handleDragEnd]);
 
   const handleMouseLeave = useCallback(() => {
-    if (dragState) {
-      handleDragEnd();
-    }
-  }, [dragState, handleDragEnd]);
+    handleDragEnd();
+  }, [handleDragEnd]);
 
   if (tasksWithDates.length === 0) {
     return (
@@ -500,12 +493,16 @@ export function GanttView() {
                       ? 'bg-green-500/30'
                       : task.status === 'in_progress'
                       ? 'bg-yellow-500/30'
+                      : task.status === 'on_hold'
+                      ? 'bg-gray-500/30'
                       : 'bg-blue-500/30';
 
                     const progressColor = task.status === 'done'
                       ? 'bg-green-500'
                       : task.status === 'in_progress'
                       ? 'bg-yellow-500'
+                      : task.status === 'on_hold'
+                      ? 'bg-gray-500'
                       : 'bg-blue-500';
 
                     return (

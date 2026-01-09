@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
@@ -14,39 +14,39 @@ export function TodoView() {
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Filter and sort tasks
-  const filteredTasks = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+  // Filter and sort tasks - memoized
+  const sortedTasks = useMemo(() => {
+    const filtered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+    const statusOrder = { todo: 0, in_progress: 1, on_hold: 2, done: 3 };
+    return [...filtered].sort((a, b) => {
+      if (statusOrder[a.status] !== statusOrder[b.status]) {
+        return statusOrder[a.status] - statusOrder[b.status];
+      }
+      return a.sortOrder - b.sortOrder;
+    });
+  }, [tasks, showCompletedTasks]);
 
-  // Sort by status (todo first, then in_progress, then done), then by sortOrder
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    const statusOrder = { todo: 0, in_progress: 1, done: 2 };
-    if (statusOrder[a.status] !== statusOrder[b.status]) {
-      return statusOrder[a.status] - statusOrder[b.status];
-    }
-    return a.sortOrder - b.sortOrder;
-  });
-
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setIsEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleToggle = (task: Task) => {
+  const handleToggle = useCallback((task: Task) => {
     const newStatus = task.status === 'done' ? 'todo' : 'done';
     updateTaskStatus(task.id, newStatus);
-  };
+  }, [updateTaskStatus]);
 
-  const handleDelete = (e: React.MouseEvent, taskId: string) => {
+  const handleDelete = useCallback((e: React.MouseEvent, taskId: string) => {
     e.stopPropagation();
     deleteTask(taskId);
-  };
+  }, [deleteTask]);
 
-  const formatDate = (dateStr: string | null) => {
+  const formatDate = useCallback((dateStr: string | null) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString(locale);
-  };
+  }, [locale]);
 
-  if (filteredTasks.length === 0) {
+  if (sortedTasks.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-muted-foreground text-base">{t('message.noTasks')}</p>
@@ -130,6 +130,7 @@ export function TodoView() {
                   <span className={cn('text-sm', STATUS_COLORS[task.status])}>
                     {task.status === 'todo' && t('status.todo')}
                     {task.status === 'in_progress' && t('status.inProgress')}
+                    {task.status === 'on_hold' && t('status.onHold')}
                     {task.status === 'done' && t('status.done')}
                   </span>
                 </td>

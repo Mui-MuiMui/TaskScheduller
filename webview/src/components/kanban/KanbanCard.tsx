@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { DraggableProvided } from '@hello-pangea/dnd';
 import type { Task } from '@/types';
 import { TaskCard } from '@/components/common/TaskCard';
@@ -9,7 +10,7 @@ interface KanbanCardProps {
   onClick: () => void;
 }
 
-export function KanbanCard({ task, provided, isDragging, onClick }: KanbanCardProps) {
+export const KanbanCard = memo(function KanbanCard({ task, provided, isDragging, onClick }: KanbanCardProps) {
   return (
     <div
       ref={provided.innerRef}
@@ -19,4 +20,4 @@ export function KanbanCard({ task, provided, isDragging, onClick }: KanbanCardPr
       <TaskCard task={task} onClick={onClick} isDragging={isDragging} />
     </div>
   );
-}
+});

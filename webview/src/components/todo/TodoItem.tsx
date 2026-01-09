@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from 'react';
 import type { Task } from '@/types';
 import { Checkbox, Badge, Progress } from '@/components/ui';
 import { useTaskStore } from '@/stores/taskStore';
@@ -10,20 +11,24 @@ interface TodoItemProps {
   onEdit: () => void;
 }
 
-export function TodoItem({ task, onEdit }: TodoItemProps) {
+export const TodoItem = memo(function TodoItem({ task, onEdit }: TodoItemProps) {
   const { updateTaskStatus, deleteTask } = useTaskStore();
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
+
+  const isOverdue = useMemo(() =>
+    task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done',
+    [task.dueDate, task.status]
+  );
   const isDone = task.status === 'done';
 
-  const handleToggle = () => {
+  const handleToggle = useCallback(() => {
     const newStatus = isDone ? 'todo' : 'done';
     updateTaskStatus(task.id, newStatus);
-  };
+  }, [isDone, task.id, updateTaskStatus]);
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     deleteTask(task.id);
-  };
+  }, [task.id, deleteTask]);
 
   return (
     <div
@@ -114,4 +119,4 @@ export function TodoItem({ task, onEdit }: TodoItemProps) {
       </div>
     </div>
   );
-}
+});

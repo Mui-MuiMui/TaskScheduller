@@ -15,6 +15,7 @@
   "task.task": "Task",
   "status.todo": "To Do",
   "status.inProgress": "In Progress",
+  "status.onHold": "On Hold",
   "status.done": "Done",
   "priority.low": "Low",
   "priority.medium": "Medium",

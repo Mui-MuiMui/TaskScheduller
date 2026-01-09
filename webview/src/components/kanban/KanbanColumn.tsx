@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { DroppableProvided } from '@hello-pangea/dnd';
 import { Draggable } from '@hello-pangea/dnd';
 import type { Task, TaskStatus } from '@/types';
@@ -13,7 +14,7 @@ interface KanbanColumnProps {
   onEditTask: (task: Task) => void;
 }
 
-export function KanbanColumn({
+export const KanbanColumn = memo(function KanbanColumn({
   status,
   label,
   tasks,
@@ -24,6 +25,7 @@ export function KanbanColumn({
   const statusColors: Record<TaskStatus, string> = {
     todo: 'bg-blue-500',
     in_progress: 'bg-yellow-500',
+    on_hold: 'bg-gray-500',
     done: 'bg-green-500',
   };
 
@@ -61,4 +63,4 @@ export function KanbanColumn({
       </div>
     </div>
   );
-}
+});
