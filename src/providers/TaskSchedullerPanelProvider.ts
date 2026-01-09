@@ -21,6 +21,7 @@ export class TaskSchedullerPanelProvider {
   private _panel?: vscode.WebviewPanel;
   private _taskService: TaskService;
   private _disposables: vscode.Disposable[] = [];
+  private _currentProjectId?: string;
 
   private constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -42,14 +43,20 @@ export class TaskSchedullerPanelProvider {
     return TaskSchedullerPanelProvider._instance;
   }
 
-  public show(): void {
+  public show(projectId?: string): void {
+    this._currentProjectId = projectId;
+
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
 
-    // If panel exists, show it
+    // If panel exists, show it and update project
     if (this._panel) {
       this._panel.reveal(column);
+      // Send project change to webview
+      if (projectId) {
+        this.sendCommand('SET_PROJECT', { projectId });
+      }
       return;
     }
 
@@ -176,7 +183,13 @@ export class TaskSchedullerPanelProvider {
 
   private async _sendInitialData(requestId: string): Promise<void> {
     this._sendConfig();
-    await this._loadTasks(requestId);
+    // If a project is selected, filter by project
+    const filter = this._currentProjectId ? { projectId: this._currentProjectId } : undefined;
+    await this._loadTasks(requestId, filter);
+    // Also send current project info
+    if (this._currentProjectId) {
+      this.sendCommand('SET_PROJECT', { projectId: this._currentProjectId });
+    }
   }
 
   private _sendConfig(): void {

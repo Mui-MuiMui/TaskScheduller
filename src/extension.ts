@@ -21,8 +21,8 @@ export async function activate(context: vscode.ExtensionContext) {
       databaseManager
     );
 
-    // Create sidebar view provider
-    const sidebarProvider = new SidebarViewProvider(context.extensionUri);
+    // Create sidebar view provider with database access
+    const sidebarProvider = new SidebarViewProvider(context.extensionUri, databaseManager);
 
     // Register sidebar view provider
     context.subscriptions.push(

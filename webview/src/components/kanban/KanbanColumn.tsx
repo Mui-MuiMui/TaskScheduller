@@ -28,12 +28,12 @@ export function KanbanColumn({
   };
 
   return (
-    <div className="flex-1 min-w-[200px] max-w-[300px] flex flex-col bg-muted/30 rounded-md">
+    <div className="flex-1 min-w-[240px] max-w-[350px] flex flex-col bg-muted/30 rounded-md">
       {/* Column Header */}
-      <div className="flex items-center gap-2 p-2 border-b border-border">
-        <div className={cn('w-2 h-2 rounded-full', statusColors[status])} />
-        <span className="text-xs font-semibold">{label}</span>
-        <span className="text-[10px] text-muted-foreground ml-auto">{tasks.length}</span>
+      <div className="flex items-center gap-2 p-3 border-b border-border">
+        <div className={cn('w-3 h-3 rounded-full', statusColors[status])} />
+        <span className="text-sm font-semibold">{label}</span>
+        <span className="text-xs text-muted-foreground ml-auto">{tasks.length}</span>
       </div>
 
       {/* Column Content */}
@@ -41,7 +41,7 @@ export function KanbanColumn({
         ref={provided.innerRef}
         {...provided.droppableProps}
         className={cn(
-          'flex-1 overflow-y-auto p-1 space-y-1 min-h-[100px]',
+          'flex-1 overflow-y-auto p-2 space-y-2 min-h-[100px]',
           isDraggingOver && 'bg-accent/20'
         )}
       >

@@ -21,6 +21,8 @@ interface TaskState {
   selectedTaskId: string | null;
   isLoading: boolean;
   error: string | null;
+  currentProjectId: string | null;
+  showCompletedTasks: boolean;
 
   // Config
   locale: string;
@@ -40,6 +42,8 @@ interface TaskState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setConfig: (config: { locale: string; theme: 'light' | 'dark' | 'high-contrast' }) => void;
+  setCurrentProjectId: (projectId: string | null) => void;
+  setShowCompletedTasks: (show: boolean) => void;
 
   // Actions - API calls (send to extension)
   loadTasks: () => void;
@@ -67,6 +71,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   selectedTaskId: null,
   isLoading: true,
   error: null,
+  currentProjectId: null,
+  showCompletedTasks: true,
   locale: 'en',
   theme: 'dark',
 
@@ -93,11 +99,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
   setConfig: (config) => set({ locale: config.locale, theme: config.theme }),
+  setCurrentProjectId: (projectId) => set({ currentProjectId: projectId }),
+  setShowCompletedTasks: (show) => set({ showCompletedTasks: show }),
 
   // API calls
   loadTasks: () => {
     set({ isLoading: true });
-    postMessage({ type: 'LOAD_TASKS' });
+    const projectId = get().currentProjectId;
+    postMessage({ type: 'LOAD_TASKS', payload: { filter: projectId ? { projectId } : undefined } });
   },
 
   createTask: (dto) => {
@@ -201,12 +210,16 @@ export function initializeMessageHandler() {
         break;
 
       case 'COMMAND':
-        const commandPayload = message as { command: string; payload?: { view?: ViewType } };
+        const commandPayload = message as { command: string; payload?: { view?: ViewType; projectId?: string } };
         if (commandPayload.command === 'SWITCH_VIEW' && commandPayload.payload?.view) {
           useTaskStore.setState({ currentView: commandPayload.payload.view });
         } else if (commandPayload.command === 'CREATE_TASK_DIALOG') {
           // This will be handled by UI component
           window.dispatchEvent(new CustomEvent('openCreateTaskDialog'));
+        } else if (commandPayload.command === 'SET_PROJECT' && commandPayload.payload?.projectId) {
+          useTaskStore.setState({ currentProjectId: commandPayload.payload.projectId });
+          // Reload tasks for new project
+          useTaskStore.getState().loadTasks();
         }
         break;
     }

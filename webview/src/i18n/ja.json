@@ -29,6 +29,7 @@
   "action.newTask": "新規タスク",
   "action.today": "今日",
   "confirm.delete": "このタスクを削除してもよろしいですか？",
+  "filter.showCompleted": "完了を表示",
   "message.noTasks": "タスクがありません。最初のタスクを作成しましょう！",
   "message.noTasksWithDates": "日付が設定されたタスクがありません。ガントチャートに表示するには開始日または期限を設定してください。",
   "message.loading": "読み込み中...",

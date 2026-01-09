@@ -5,12 +5,20 @@ import * as fs from 'fs';
 import { migrations } from './migrations';
 
 export class DatabaseManager {
-  private db: Database | null = null;
+  private _db: Database | null = null;
   private dbPath: string;
   private wasmPath: string;
 
+  // Expose database for repositories
+  public get db(): Database {
+    if (!this._db) {
+      throw new Error('Database not initialized');
+    }
+    return this._db;
+  }
+
   constructor(private context: vscode.ExtensionContext) {
-    this.dbPath = path.join(context.globalStorageUri.fsPath, 'taskscheduller.db');
+    this._dbPath = path.join(context.globalStorageUri.fsPath, 'taskscheduller.db');
     this.wasmPath = path.join(
       context.extensionUri.fsPath,
       'node_modules',
@@ -22,7 +30,7 @@ export class DatabaseManager {
 
   async initialize(): Promise<void> {
     // Ensure storage directory exists
-    const storageDir = path.dirname(this.dbPath);
+    const storageDir = path.dirname(this._dbPath);
     if (!fs.existsSync(storageDir)) {
       fs.mkdirSync(storageDir, { recursive: true });
     }
@@ -33,12 +41,12 @@ export class DatabaseManager {
     });
 
     // Load existing database or create new one
-    if (fs.existsSync(this.dbPath)) {
-      const buffer = fs.readFileSync(this.dbPath);
-      this.db = new SQL.Database(buffer);
+    if (fs.existsSync(this._dbPath)) {
+      const buffer = fs.readFileSync(this._dbPath);
+      this._db = new SQL.Database(buffer);
       console.log('Loaded existing database');
     } else {
-      this.db = new SQL.Database();
+      this._db = new SQL.Database();
       console.log('Created new database');
     }
 
@@ -47,12 +55,12 @@ export class DatabaseManager {
   }
 
   private async runMigrations(): Promise<void> {
-    if (!this.db) {
+    if (!this._db) {
       throw new Error('Database not initialized');
     }
 
     // Create migrations table if not exists
-    this.db.run(`
+    this._db.run(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         version INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
@@ -61,24 +69,24 @@ export class DatabaseManager {
     `);
 
     // Get current version
-    const result = this.db.exec('SELECT MAX(version) as version FROM schema_migrations');
+    const result = this._db.exec('SELECT MAX(version) as version FROM schema_migrations');
     const currentVersion = (result[0]?.values[0]?.[0] as number) ?? 0;
 
     // Apply pending migrations
     for (const migration of migrations) {
       if (migration.version > currentVersion) {
         console.log(`Applying migration ${migration.name}...`);
-        this.db.run('BEGIN TRANSACTION');
+        this._db.run('BEGIN TRANSACTION');
         try {
-          migration.up(this.db);
-          this.db.run('INSERT INTO schema_migrations (version, name) VALUES (?, ?)', [
+          migration.up(this._db);
+          this._db.run('INSERT INTO schema_migrations (version, name) VALUES (?, ?)', [
             migration.version,
             migration.name,
           ]);
-          this.db.run('COMMIT');
+          this._db.run('COMMIT');
           console.log(`Migration ${migration.name} applied successfully`);
         } catch (error) {
-          this.db.run('ROLLBACK');
+          this._db.run('ROLLBACK');
           throw new Error(`Migration ${migration.name} failed: ${(error as Error).message}`);
         }
       }
@@ -88,18 +96,18 @@ export class DatabaseManager {
   }
 
   execute(sql: string, params: unknown[] = []): void {
-    if (!this.db) {
+    if (!this._db) {
       throw new Error('Database not initialized');
     }
-    this.db.run(sql, params as (string | number | null | Uint8Array)[]);
+    this._db.run(sql, params as (string | number | null | Uint8Array)[]);
     this.save();
   }
 
   query<T extends Record<string, unknown>>(sql: string, params: unknown[] = []): T[] {
-    if (!this.db) {
+    if (!this._db) {
       throw new Error('Database not initialized');
     }
-    const stmt = this.db.prepare(sql);
+    const stmt = this._db.prepare(sql);
     stmt.bind(params as (string | number | null | Uint8Array)[]);
 
     const results: T[] = [];
@@ -116,40 +124,40 @@ export class DatabaseManager {
   }
 
   private save(): void {
-    if (!this.db) {
+    if (!this._db) {
       return;
     }
 
-    const dir = path.dirname(this.dbPath);
+    const dir = path.dirname(this._dbPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    const data = this.db.export();
+    const data = this._db.export();
     const buffer = Buffer.from(data);
-    fs.writeFileSync(this.dbPath, buffer);
+    fs.writeFileSync(this._dbPath, buffer);
   }
 
   close(): void {
     this.save();
-    this.db?.close();
-    this.db = null;
+    this._db?.close();
+    this._db = null;
     console.log('Database closed');
   }
 
   // Transaction helper
   transaction<T>(fn: () => T): T {
-    if (!this.db) {
+    if (!this._db) {
       throw new Error('Database not initialized');
     }
-    this.db.run('BEGIN TRANSACTION');
+    this._db.run('BEGIN TRANSACTION');
     try {
       const result = fn();
-      this.db.run('COMMIT');
+      this._db.run('COMMIT');
       this.save();
       return result;
     } catch (error) {
-      this.db.run('ROLLBACK');
+      this._db.run('ROLLBACK');
       throw error;
     }
   }

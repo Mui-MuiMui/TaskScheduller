@@ -41,4 +41,11 @@ export function registerCommands(
       provider.sendCommand('SWITCH_VIEW', { view: 'gantt' });
     })
   );
+
+  // Open specific project
+  context.subscriptions.push(
+    vscode.commands.registerCommand('taskScheduller.openProject', (projectId: string) => {
+      provider.show(projectId);
+    })
+  );
 }

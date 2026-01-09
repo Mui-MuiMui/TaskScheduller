@@ -4,11 +4,19 @@
   "command.switchToTodo": "ToDoリストに切り替え",
   "command.switchToKanban": "カンバンボードに切り替え",
   "command.switchToGantt": "ガントチャートに切り替え",
+  "command.openProject": "プロジェクトを開く",
   "config.defaultView": "タスクマネージャーを開いたときの既定のビュー",
   "config.autoSave": "変更を自動保存する",
   "message.taskCreated": "タスク「{0}」を作成しました",
   "message.taskUpdated": "タスク「{0}」を更新しました",
   "message.taskDeleted": "タスクを削除しました",
+  "message.projectCreated": "プロジェクト「{0}」を作成しました",
+  "message.projectUpdated": "プロジェクト「{0}」を更新しました",
+  "message.projectDeleted": "プロジェクトを削除しました",
   "error.invalidTask": "無効なタスクデータです",
-  "error.dbInit": "データベースの初期化に失敗しました"
+  "error.dbInit": "データベースの初期化に失敗しました",
+  "error.createProjectFailed": "プロジェクトの作成に失敗しました",
+  "error.updateProjectFailed": "プロジェクトの更新に失敗しました",
+  "error.deleteProjectFailed": "プロジェクトの削除に失敗しました",
+  "error.cannotDeleteDefaultProject": "デフォルトプロジェクトは削除できません"
 }

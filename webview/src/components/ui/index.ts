@@ -15,6 +15,7 @@ export {
   DialogDescription,
 } from './dialog';
 export { Input } from './input';
+export { Label } from './label';
 export { Progress } from './progress';
 export {
   Select,

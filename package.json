@@ -53,6 +53,11 @@
         "command": "taskScheduller.switchToGantt",
         "title": "%command.switchToGantt%",
         "category": "TaskScheduller"
+      },
+      {
+        "command": "taskScheduller.openProject",
+        "title": "%command.openProject%",
+        "category": "TaskScheduller"
       }
     ],
     "viewsContainers": {

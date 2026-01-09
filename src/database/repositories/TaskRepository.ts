@@ -12,6 +12,7 @@ import type {
 // Database row type (snake_case)
 interface TaskRow {
   id: string;
+  project_id: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -31,6 +32,7 @@ interface TaskRow {
 function rowToTask(row: TaskRow): Task {
   return {
     id: row.id,
+    projectId: row.project_id,
     title: row.title,
     description: row.description,
     status: row.status,
@@ -55,6 +57,11 @@ export class TaskRepository {
     const params: unknown[] = [];
 
     if (filter) {
+      if (filter.projectId) {
+        sql += ' AND project_id = ?';
+        params.push(filter.projectId);
+      }
+
       if (filter.status && filter.status.length > 0) {
         sql += ` AND status IN (${filter.status.map(() => '?').join(',')})`;
         params.push(...filter.status);
@@ -118,6 +125,7 @@ export class TaskRepository {
   create(dto: CreateTaskDto): Task {
     const id = uuidv4();
     const now = new Date().toISOString();
+    const projectId = dto.projectId ?? 'default-project';
 
     // Get max sort_order for the status
     const maxOrderResult = this.db.queryOne<{ max_order: number | null }>(
@@ -128,12 +136,13 @@ export class TaskRepository {
 
     this.db.execute(
       `INSERT INTO tasks (
-        id, title, description, status, priority,
+        id, project_id, title, description, status, priority,
         due_date, start_date, assignee, estimated_hours,
         progress, parent_id, sort_order, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
+        projectId,
         dto.title,
         dto.description ?? null,
         dto.status ?? 'todo',
@@ -169,6 +178,10 @@ export class TaskRepository {
     const updates: string[] = [];
     const params: unknown[] = [];
 
+    if (dto.projectId !== undefined) {
+      updates.push('project_id = ?');
+      params.push(dto.projectId);
+    }
     if (dto.title !== undefined) {
       updates.push('title = ?');
       params.push(dto.title);

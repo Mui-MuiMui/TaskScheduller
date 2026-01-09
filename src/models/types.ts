@@ -11,9 +11,23 @@ export type DependencyType =
   | 'finish_to_finish'
   | 'start_to_finish';
 
+// Project entity
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string; // HEX color
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  // Aggregated data
+  taskCount?: number;
+}
+
 // Task entity
 export interface Task {
   id: string;
+  projectId: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -55,7 +69,18 @@ export interface Dependency {
 }
 
 // DTOs for creating/updating
+export interface CreateProjectDto {
+  name: string;
+  description?: string;
+  color?: string;
+}
+
+export interface UpdateProjectDto extends Partial<CreateProjectDto> {
+  sortOrder?: number;
+}
+
 export interface CreateTaskDto {
+  projectId?: string;
   title: string;
   description?: string;
   status?: TaskStatus;
@@ -102,6 +127,7 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 
 // Task filter
 export interface TaskFilter {
+  projectId?: string;
   status?: TaskStatus[];
   priority?: Priority[];
   labelIds?: string[];

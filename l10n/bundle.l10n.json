@@ -4,11 +4,19 @@
   "command.switchToTodo": "Switch to Todo List",
   "command.switchToKanban": "Switch to Kanban Board",
   "command.switchToGantt": "Switch to Gantt Chart",
+  "command.openProject": "Open Project",
   "config.defaultView": "Default view when opening Task Manager",
   "config.autoSave": "Automatically save changes",
   "message.taskCreated": "Task '{0}' has been created",
   "message.taskUpdated": "Task '{0}' has been updated",
   "message.taskDeleted": "Task deleted successfully",
+  "message.projectCreated": "Project '{0}' has been created",
+  "message.projectUpdated": "Project '{0}' has been updated",
+  "message.projectDeleted": "Project deleted successfully",
   "error.invalidTask": "Invalid task data",
-  "error.dbInit": "Failed to initialize database"
+  "error.dbInit": "Failed to initialize database",
+  "error.createProjectFailed": "Failed to create project",
+  "error.updateProjectFailed": "Failed to update project",
+  "error.deleteProjectFailed": "Failed to delete project",
+  "error.cannotDeleteDefaultProject": "Cannot delete the default project"
 }

@@ -9,9 +9,12 @@ import { KANBAN_COLUMNS } from '@/types';
 
 export function KanbanView() {
   const { t } = useI18n();
-  const { tasks, reorderTasks, updateTaskStatus } = useTaskStore();
+  const { tasks, reorderTasks, updateTaskStatus, showCompletedTasks } = useTaskStore();
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Filter tasks based on showCompletedTasks
+  const filteredTasks = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -64,7 +67,12 @@ export function KanbanView() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-2 h-full min-h-0">
           {KANBAN_COLUMNS.map((column) => {
-            const columnTasks = tasks
+            // Skip done column if not showing completed tasks
+            if (!showCompletedTasks && column.status === 'done') {
+              return null;
+            }
+
+            const columnTasks = filteredTasks
               .filter((t) => t.status === column.status)
               .sort((a, b) => a.sortOrder - b.sortOrder);
 
