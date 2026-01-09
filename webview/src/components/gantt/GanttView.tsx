@@ -1,17 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
-import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/types';
-import { PRIORITY_COLORS } from '@/types';
 
 type ViewMode = 'day' | 'week' | 'month';
 
 export function GanttView() {
-  const { t } = useI18n();
-  const { tasks, dependencies } = useTaskStore();
+  const { tasks } = useTaskStore();
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();

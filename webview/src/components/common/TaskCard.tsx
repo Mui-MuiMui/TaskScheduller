@@ -2,7 +2,7 @@ import type { Task } from '@/types';
 import { Card, CardContent, Badge, Progress } from '@/components/ui';
 import { Calendar, User, Clock, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PRIORITY_COLORS, PRIORITY_LABELS } from '@/types';
+import { PRIORITY_COLORS } from '@/types';
 
 interface TaskCardProps {
   task: Task;

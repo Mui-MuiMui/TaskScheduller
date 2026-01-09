@@ -23,6 +23,8 @@ export interface BaseMessage {
   id: string;
   timestamp: number;
   type: string;
+  payload?: unknown;
+  command?: string;
 }
 
 // Generate unique message ID
@@ -31,7 +33,7 @@ export function generateMessageId(): string {
 }
 
 // Send message to extension host
-export function postMessage<T extends BaseMessage>(message: Omit<T, 'id' | 'timestamp'>): string {
+export function postMessage(message: { type: string; payload?: unknown }): string {
   const id = generateMessageId();
   const fullMessage = {
     ...message,

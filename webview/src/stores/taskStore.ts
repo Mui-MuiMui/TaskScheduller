@@ -151,8 +151,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
 // Message handler - call this once on app init
 export function initializeMessageHandler() {
-  const store = useTaskStore.getState();
-
   // Send ready message
   postMessage({ type: 'WEBVIEW_READY' });
 
