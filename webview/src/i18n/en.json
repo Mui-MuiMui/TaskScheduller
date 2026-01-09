@@ -13,6 +13,9 @@
   "task.progress": "Progress",
   "task.labels": "Labels",
   "task.task": "Task",
+  "task.dependencies": "Dependencies (Predecessors)",
+  "task.selectPredecessor": "Select predecessor task",
+  "task.noDependenciesAvailable": "No other tasks available",
   "status.todo": "To Do",
   "status.inProgress": "In Progress",
   "status.onHold": "On Hold",
@@ -37,5 +40,10 @@
   "message.complete": "complete",
   "gantt.day": "Day",
   "gantt.week": "Week",
-  "gantt.month": "Month"
+  "gantt.month": "Month",
+  "gantt.connectMode": "Connect Mode",
+  "gantt.selectSuccessor": "Select successor for: {task}",
+  "gantt.clickToConnect": "Click to connect",
+  "gantt.addDependency": "Add Dependency",
+  "validation.dueDateBeforeStartDate": "Due date is before start date (will be auto-corrected on save)"
 }

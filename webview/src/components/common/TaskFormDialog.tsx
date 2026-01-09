@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Task, CreateTaskDto, TaskStatus, Priority } from '@/types';
 import {
   Dialog,
@@ -14,10 +14,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Badge,
 } from '@/components/ui';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { PRIORITY_LABEL_KEYS } from '@/types';
+import { X, Plus } from 'lucide-react';
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -27,8 +29,30 @@ interface TaskFormDialogProps {
 
 export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps) {
   const { t } = useI18n();
-  const { createTask, updateTaskApi } = useTaskStore();
+  const { tasks, dependencies, createTask, updateTaskApi, createDependency, deleteDependency } = useTaskStore();
   const isEditMode = !!task;
+
+  // 現在のタスクの先行タスク（依存関係）を取得
+  const currentDependencies = useMemo(() => {
+    if (!task) return [];
+    return dependencies
+      .filter(d => d.successorId === task.id)
+      .map(d => ({
+        dependency: d,
+        predecessorTask: tasks.find(t => t.id === d.predecessorId),
+      }))
+      .filter(d => d.predecessorTask);
+  }, [task, dependencies, tasks]);
+
+  // 選択可能な先行タスク（自分自身と既に依存関係にあるタスクを除外）
+  const availablePredecessors = useMemo(() => {
+    if (!task) return [];
+    const existingPredecessorIds = new Set(currentDependencies.map(d => d.dependency.predecessorId));
+    return tasks.filter(t =>
+      t.id !== task.id &&
+      !existingPredecessorIds.has(t.id)
+    );
+  }, [task, tasks, currentDependencies]);
 
   const [formData, setFormData] = useState<CreateTaskDto>({
     title: '',
@@ -74,11 +98,18 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
     e.preventDefault();
     if (!formData.title.trim()) return;
 
+    // 日付の整合性チェック：期限日が開始日より前の場合は開始日に合わせる
+    let finalStartDate = formData.startDate || undefined;
+    let finalDueDate = formData.dueDate || undefined;
+    if (finalStartDate && finalDueDate && finalDueDate < finalStartDate) {
+      finalDueDate = finalStartDate;
+    }
+
     const cleanedData = {
       ...formData,
       description: formData.description || undefined,
-      dueDate: formData.dueDate || undefined,
-      startDate: formData.startDate || undefined,
+      dueDate: finalDueDate,
+      startDate: finalStartDate,
       assignee: formData.assignee || undefined,
       estimatedHours: formData.estimatedHours || undefined,
       progress: formData.progress ?? 0,
@@ -91,6 +122,17 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
     }
 
     onOpenChange(false);
+  };
+
+  // 依存関係を追加（選択時に即座に追加）
+  const handleAddDependency = (predecessorId: string) => {
+    if (!task || !predecessorId) return;
+    createDependency(predecessorId, task.id);
+  };
+
+  // 依存関係を削除
+  const handleRemoveDependency = (dependencyId: string) => {
+    deleteDependency(dependencyId);
   };
 
   return (
@@ -183,6 +225,10 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                 value={formData.dueDate}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               />
+              {/* 日付の整合性警告 */}
+              {formData.startDate && formData.dueDate && formData.dueDate < formData.startDate && (
+                <p className="text-xs text-amber-500">{t('validation.dueDateBeforeStartDate')}</p>
+              )}
             </div>
           </div>
 
@@ -239,6 +285,61 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
               <span className="text-xs text-muted-foreground">%</span>
             </div>
           </div>
+
+          {/* Dependencies - 編集モードのみ表示 */}
+          {isEditMode && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium">{t('task.dependencies')}</label>
+
+              {/* 現在の依存関係（先行タスク）一覧 */}
+              {currentDependencies.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {currentDependencies.map(({ dependency, predecessorTask }) => (
+                    <Badge
+                      key={dependency.id}
+                      variant="secondary"
+                      className="flex items-center gap-1 pr-1"
+                    >
+                      <span className="max-w-[150px] truncate">{predecessorTask!.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDependency(dependency.id)}
+                        className="ml-1 hover:bg-muted rounded p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* 先行タスク追加 - 選択したら即座に追加 */}
+              {availablePredecessors.length > 0 && (
+                <Select
+                  value=""
+                  onValueChange={handleAddDependency}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('task.selectPredecessor')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePredecessors.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <span className="flex items-center gap-2">
+                          <Plus className="h-3 w-3" />
+                          {t.title}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {availablePredecessors.length === 0 && currentDependencies.length === 0 && (
+                <p className="text-xs text-muted-foreground">{t('task.noDependenciesAvailable')}</p>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

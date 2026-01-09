@@ -13,6 +13,9 @@
   "task.progress": "進捗",
   "task.labels": "ラベル",
   "task.task": "タスク",
+  "task.dependencies": "依存関係（先行タスク）",
+  "task.selectPredecessor": "先行タスクを選択",
+  "task.noDependenciesAvailable": "他のタスクがありません",
   "status.todo": "未着手",
   "status.inProgress": "進行中",
   "status.onHold": "保留中",
@@ -37,5 +40,10 @@
   "message.complete": "完了",
   "gantt.day": "日",
   "gantt.week": "週",
-  "gantt.month": "月"
+  "gantt.month": "月",
+  "gantt.connectMode": "接続モード",
+  "gantt.selectSuccessor": "後続タスクを選択: {task}",
+  "gantt.clickToConnect": "クリックして接続",
+  "gantt.addDependency": "依存関係を追加",
+  "validation.dueDateBeforeStartDate": "期限が開始日より前です（保存時に自動修正されます）"
 }

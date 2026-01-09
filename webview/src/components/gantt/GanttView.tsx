@@ -2,12 +2,18 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
 import type { Task } from '@/types';
 
 type ViewMode = 'day' | 'week' | 'month';
+
+// Connection mode state for creating dependencies
+interface ConnectionState {
+  predecessorId: string;
+  predecessorTaskTitle: string;
+}
 
 interface DragState {
   taskId: string;
@@ -29,7 +35,7 @@ interface ColumnData {
 
 export function GanttView() {
   const { t, locale } = useI18n();
-  const { tasks, updateTaskApi, showCompletedTasks } = useTaskStore();
+  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks } = useTaskStore();
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -41,6 +47,8 @@ export function GanttView() {
   const [containerWidth, setContainerWidth] = useState(0);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState | null>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -350,6 +358,171 @@ export function GanttView() {
     handleDragEnd();
   }, [handleDragEnd]);
 
+  // Start connection mode (for creating dependency)
+  const handleStartConnection = useCallback((task: Task) => {
+    setConnectionState({
+      predecessorId: task.id,
+      predecessorTaskTitle: task.title,
+    });
+  }, []);
+
+  // Complete connection (create dependency)
+  const handleCompleteConnection = useCallback((successorId: string) => {
+    if (connectionState && connectionState.predecessorId !== successorId) {
+      createDependency(connectionState.predecessorId, successorId);
+    }
+    setConnectionState(null);
+  }, [connectionState, createDependency]);
+
+  // Cancel connection mode
+  const handleCancelConnection = useCallback(() => {
+    setConnectionState(null);
+  }, []);
+
+  // Get task index in the displayed list
+  const taskIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    tasksWithDates.forEach((task, index) => {
+      map.set(task.id, index);
+    });
+    return map;
+  }, [tasksWithDates]);
+
+  // Calculate dependency arrow paths
+  const dependencyArrows = useMemo(() => {
+    const rowHeight = 56; // Height of each task row
+    const barHeight = 28; // Height of the task bar
+    const verticalPadding = (rowHeight - barHeight) / 2;
+
+    return dependencies
+      .filter(dep => {
+        // Only show dependencies where both tasks are visible
+        const predIndex = taskIndexMap.get(dep.predecessorId);
+        const succIndex = taskIndexMap.get(dep.successorId);
+        return predIndex !== undefined && succIndex !== undefined;
+      })
+      .map(dep => {
+        const predTask = tasksWithDates.find(t => t.id === dep.predecessorId);
+        const succTask = tasksWithDates.find(t => t.id === dep.successorId);
+
+        if (!predTask || !succTask) return null;
+
+        const predPos = getTaskPosition(predTask);
+        const succPos = getTaskPosition(succTask);
+
+        if (!predPos || !succPos) return null;
+
+        const predIndex = taskIndexMap.get(dep.predecessorId)!;
+        const succIndex = taskIndexMap.get(dep.successorId)!;
+
+        // Calculate start point (right side of predecessor bar)
+        const startX = predPos.leftPx + predPos.widthPx;
+        const startY = predIndex * rowHeight + rowHeight / 2;
+
+        // Calculate end point (left side of successor bar)
+        const endX = succPos.leftPx;
+        const endY = succIndex * rowHeight + rowHeight / 2;
+
+        // Check if tasks overlap horizontally (predecessor ends after successor starts)
+        const hasOverlap = startX > endX - 20;
+        const goingDown = succIndex > predIndex;
+        const sameRow = succIndex === predIndex;
+
+        let path: string;
+
+        if (sameRow) {
+          // Same row - need to go around
+          if (hasOverlap) {
+            // Go below the bar
+            const bottomY = startY + barHeight / 2 + 8;
+            path = `M ${startX} ${startY}
+                    L ${startX + 8} ${startY}
+                    L ${startX + 8} ${bottomY}
+                    L ${endX - 8} ${bottomY}
+                    L ${endX - 8} ${endY}`;
+          } else {
+            // Simple horizontal line
+            path = `M ${startX} ${startY} L ${endX - 8} ${endY}`;
+          }
+        } else if (hasOverlap) {
+          // Tasks overlap horizontally - route around successor bar
+          // Connect to successor from far left to avoid overlapping with the bar
+          const cornerRadius = 6;
+          const horizontalOffset = 12;
+          // Connect to a point well left of the successor bar
+          const succConnectX = Math.min(endX - 30, startX - 10);
+
+          if (goingDown) {
+            // Route: right -> down -> left (to far left of successor) -> down -> right to successor
+            const midY = predIndex * rowHeight + rowHeight - verticalPadding + 8;
+
+            path = `M ${startX} ${startY}
+                    L ${startX + horizontalOffset} ${startY}
+                    Q ${startX + horizontalOffset + cornerRadius} ${startY} ${startX + horizontalOffset + cornerRadius} ${startY + cornerRadius}
+                    L ${startX + horizontalOffset + cornerRadius} ${midY}
+                    L ${succConnectX} ${midY}
+                    Q ${succConnectX - cornerRadius} ${midY} ${succConnectX - cornerRadius} ${midY + cornerRadius}
+                    L ${succConnectX - cornerRadius} ${endY - cornerRadius}
+                    Q ${succConnectX - cornerRadius} ${endY} ${succConnectX} ${endY}
+                    L ${endX - 8} ${endY}`;
+          } else {
+            // Going up - route above
+            const midY = predIndex * rowHeight + verticalPadding - 8;
+
+            path = `M ${startX} ${startY}
+                    L ${startX + horizontalOffset} ${startY}
+                    Q ${startX + horizontalOffset + cornerRadius} ${startY} ${startX + horizontalOffset + cornerRadius} ${startY - cornerRadius}
+                    L ${startX + horizontalOffset + cornerRadius} ${midY}
+                    L ${succConnectX} ${midY}
+                    Q ${succConnectX - cornerRadius} ${midY} ${succConnectX - cornerRadius} ${midY - cornerRadius}
+                    L ${succConnectX - cornerRadius} ${endY + cornerRadius}
+                    Q ${succConnectX - cornerRadius} ${endY} ${succConnectX} ${endY}
+                    L ${endX - 8} ${endY}`;
+          }
+        } else {
+          // No overlap - simple L-shape: right from predecessor, then horizontal to successor
+          const cornerRadius = 6;
+          const horizontalOffset = 10;
+          const midX = startX + horizontalOffset + cornerRadius;
+
+          if (goingDown) {
+            // Go right, down to successor row level, then horizontal to successor
+            path = `M ${startX} ${startY}
+                    L ${startX + horizontalOffset} ${startY}
+                    Q ${midX} ${startY} ${midX} ${startY + cornerRadius}
+                    L ${midX} ${endY - cornerRadius}
+                    Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
+                    L ${endX - 8} ${endY}`;
+          } else {
+            // Going up
+            path = `M ${startX} ${startY}
+                    L ${startX + horizontalOffset} ${startY}
+                    Q ${midX} ${startY} ${midX} ${startY - cornerRadius}
+                    L ${midX} ${endY + cornerRadius}
+                    Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
+                    L ${endX - 8} ${endY}`;
+          }
+        }
+
+        return {
+          id: dep.id,
+          path,
+          endX,
+          endY,
+          predecessorId: dep.predecessorId,
+          successorId: dep.successorId,
+        };
+      })
+      .filter(Boolean) as Array<{
+        id: string;
+        path: string;
+        endX: number;
+        endY: number;
+        predecessorId: string;
+        successorId: string;
+      }>;
+  }, [dependencies, tasksWithDates, taskIndexMap, getTaskPosition]);
+
   if (tasksWithDates.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -445,124 +618,249 @@ export function GanttView() {
             </div>
           </div>
 
-          {/* Task rows */}
-          {tasksWithDates.map((task) => {
-            const position = getTaskPosition(task);
-            const isDragging = dragState?.taskId === task.id;
+          {/* Task rows with dependency arrows overlay */}
+          <div ref={chartAreaRef} className="relative">
+            {/* SVG overlay for dependency arrows */}
+            <svg
+              className="absolute top-0 left-[220px] pointer-events-none z-10"
+              style={{
+                width: totalChartWidth,
+                height: tasksWithDates.length * 56,
+              }}
+            >
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="8"
+                  markerHeight="6"
+                  refX="7"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon
+                    points="0 0, 8 3, 0 6"
+                    fill="currentColor"
+                    className="text-orange-500"
+                  />
+                </marker>
+              </defs>
+              {dependencyArrows.map((arrow) => (
+                <g key={arrow.id} className="pointer-events-auto">
+                  <path
+                    d={arrow.path}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-orange-500"
+                    markerEnd="url(#arrowhead)"
+                  />
+                  {/* Clickable area for deleting dependency */}
+                  <path
+                    d={arrow.path}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth="12"
+                    className="cursor-pointer hover:stroke-orange-500/30"
+                    onClick={() => {
+                      if (confirm(t('confirm.delete'))) {
+                        deleteDependency(arrow.id);
+                      }
+                    }}
+                  />
+                </g>
+              ))}
+            </svg>
 
-            return (
-              <div key={task.id} className="flex border-b border-border hover:bg-muted/30">
-                <div className="w-[220px] shrink-0 p-3 border-r border-border">
-                  <div className="text-sm font-medium truncate">{task.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {task.startDate && new Date(task.startDate).toLocaleDateString()}
-                    {task.startDate && task.dueDate && ' - '}
-                    {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
+            {/* Task rows */}
+            {tasksWithDates.map((task) => {
+              const position = getTaskPosition(task);
+              const isDragging = dragState?.taskId === task.id;
+              const isConnectionSource = connectionState?.predecessorId === task.id;
+              const isConnectionTarget = connectionState && connectionState.predecessorId !== task.id;
+
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    'flex border-b border-border hover:bg-muted/30',
+                    isConnectionTarget && 'cursor-pointer hover:bg-primary/20'
+                  )}
+                  onClick={() => {
+                    if (isConnectionTarget) {
+                      handleCompleteConnection(task.id);
+                    }
+                  }}
+                >
+                  <div className="w-[220px] shrink-0 p-3 border-r border-border flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{task.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {task.startDate && new Date(task.startDate).toLocaleDateString()}
+                        {task.startDate && task.dueDate && ' - '}
+                        {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                    {/* Connect button - always visible */}
+                    {!connectionState && (
+                      <button
+                        className="shrink-0 p-1.5 rounded hover:bg-muted transition-colors"
+                        title={t('gantt.addDependency')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartConnection(task);
+                        }}
+                      >
+                        <Link2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    )}
+                    {isConnectionSource && (
+                      <span className="shrink-0 px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded">
+                        {t('gantt.connectMode')}
+                      </span>
+                    )}
+                    {isConnectionTarget && (
+                      <span className="shrink-0 text-xs text-primary">
+                        {t('gantt.clickToConnect')}
+                      </span>
+                    )}
                   </div>
-                </div>
-                <div className="flex-1 relative h-[56px]">
-                  {/* Grid lines */}
-                  <div className="absolute inset-0 flex">
-                    {columns.map((col, index) => {
-                      const isWeekend = viewMode === 'day' &&
-                        (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+                  <div className="flex-1 relative h-[56px]">
+                    {/* Grid lines */}
+                    <div className="absolute inset-0 flex">
+                      {columns.map((col, index) => {
+                        const isWeekend = viewMode === 'day' &&
+                          (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+
+                        return (
+                          <div
+                            key={index}
+                            className={cn(
+                              'border-r border-border',
+                              col.isCurrentPeriod && 'bg-primary/10',
+                              isWeekend && 'bg-muted/30'
+                            )}
+                            style={{ width: cellWidth, minWidth: cellWidth }}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Task bar */}
+                    {position && (() => {
+                      const leftOffset = getDragOffset(task.id, 'left');
+                      const widthOffset = getDragOffset(task.id, 'width');
+                      const finalLeft = position.leftPx + leftOffset;
+                      const finalWidth = Math.max(position.widthPx + widthOffset, 20);
+
+                      // Define colors based on status
+                      const bgColor = task.status === 'done'
+                        ? 'bg-green-500/30'
+                        : task.status === 'in_progress'
+                        ? 'bg-yellow-500/30'
+                        : task.status === 'on_hold'
+                        ? 'bg-gray-500/30'
+                        : 'bg-blue-500/30';
+
+                      const progressColor = task.status === 'done'
+                        ? 'bg-green-500'
+                        : task.status === 'in_progress'
+                        ? 'bg-yellow-500'
+                        : task.status === 'on_hold'
+                        ? 'bg-gray-500'
+                        : 'bg-blue-500';
 
                       return (
                         <div
-                          key={index}
                           className={cn(
-                            'border-r border-border',
-                            col.isCurrentPeriod && 'bg-primary/10',
-                            isWeekend && 'bg-muted/30'
+                            'absolute top-1/2 -translate-y-1/2 h-7 rounded group overflow-hidden z-[5]',
+                            bgColor,
+                            isDragging ? 'cursor-grabbing shadow-lg' : 'cursor-grab hover:brightness-110',
+                            isConnectionSource && 'ring-2 ring-primary ring-offset-1',
+                            isConnectionTarget && 'hover:ring-2 hover:ring-primary'
                           )}
-                          style={{ width: cellWidth, minWidth: cellWidth }}
-                        />
+                          style={{
+                            left: `${finalLeft}px`,
+                            width: `${finalWidth}px`,
+                          }}
+                          title={`${task.title}\n${task.progress}% ${t('message.complete')}`}
+                          onMouseDown={(e) => {
+                            if (!connectionState) {
+                              handleDragStart(e, task, 'move');
+                            }
+                          }}
+                          onDoubleClick={(e) => {
+                            if (!connectionState) {
+                              e.stopPropagation();
+                              handleEditTask(task);
+                            }
+                          }}
+                          onClick={(e) => {
+                            if (isConnectionTarget) {
+                              e.stopPropagation();
+                              handleCompleteConnection(task.id);
+                            }
+                          }}
+                        >
+                          {/* Progress indicator - filled portion */}
+                          <div
+                            className={cn('h-full rounded-l pointer-events-none', progressColor)}
+                            style={{ width: `${task.progress}%` }}
+                          />
+
+                          {/* Left resize handle */}
+                          {!connectionState && (
+                            <div
+                              className={cn(
+                                'absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize',
+                                'opacity-0 group-hover:opacity-100 transition-opacity',
+                                'hover:bg-white/30 rounded-l'
+                              )}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                handleDragStart(e, task, 'resize-start');
+                              }}
+                            />
+                          )}
+
+                          {/* Right resize handle */}
+                          {!connectionState && (
+                            <div
+                              className={cn(
+                                'absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize',
+                                'opacity-0 group-hover:opacity-100 transition-opacity',
+                                'hover:bg-white/30 rounded-r'
+                              )}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                handleDragStart(e, task, 'resize-end');
+                              }}
+                            />
+                          )}
+                        </div>
                       );
-                    })}
+                    })()}
                   </div>
-
-                  {/* Task bar */}
-                  {position && (() => {
-                    const leftOffset = getDragOffset(task.id, 'left');
-                    const widthOffset = getDragOffset(task.id, 'width');
-                    const finalLeft = position.leftPx + leftOffset;
-                    const finalWidth = Math.max(position.widthPx + widthOffset, 20);
-
-                    // Define colors based on status
-                    const bgColor = task.status === 'done'
-                      ? 'bg-green-500/30'
-                      : task.status === 'in_progress'
-                      ? 'bg-yellow-500/30'
-                      : task.status === 'on_hold'
-                      ? 'bg-gray-500/30'
-                      : 'bg-blue-500/30';
-
-                    const progressColor = task.status === 'done'
-                      ? 'bg-green-500'
-                      : task.status === 'in_progress'
-                      ? 'bg-yellow-500'
-                      : task.status === 'on_hold'
-                      ? 'bg-gray-500'
-                      : 'bg-blue-500';
-
-                    return (
-                      <div
-                        className={cn(
-                          'absolute top-1/2 -translate-y-1/2 h-7 rounded group overflow-hidden',
-                          bgColor,
-                          isDragging ? 'cursor-grabbing shadow-lg' : 'cursor-grab hover:brightness-110'
-                        )}
-                        style={{
-                          left: `${finalLeft}px`,
-                          width: `${finalWidth}px`,
-                        }}
-                        title={`${task.title}\n${task.progress}% ${t('message.complete')}`}
-                        onMouseDown={(e) => handleDragStart(e, task, 'move')}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          handleEditTask(task);
-                        }}
-                      >
-                        {/* Progress indicator - filled portion */}
-                        <div
-                          className={cn('h-full rounded-l pointer-events-none', progressColor)}
-                          style={{ width: `${task.progress}%` }}
-                        />
-
-                        {/* Left resize handle */}
-                        <div
-                          className={cn(
-                            'absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize',
-                            'opacity-0 group-hover:opacity-100 transition-opacity',
-                            'hover:bg-white/30 rounded-l'
-                          )}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            handleDragStart(e, task, 'resize-start');
-                          }}
-                        />
-
-                        {/* Right resize handle */}
-                        <div
-                          className={cn(
-                            'absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize',
-                            'opacity-0 group-hover:opacity-100 transition-opacity',
-                            'hover:bg-white/30 rounded-r'
-                          )}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            handleDragStart(e, task, 'resize-end');
-                          }}
-                        />
-                      </div>
-                    );
-                  })()}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Connection mode banner */}
+      {connectionState && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 z-30">
+          <span className="text-sm">
+            {t('gantt.selectSuccessor').replace('{task}', connectionState.predecessorTaskTitle)}
+          </span>
+          <button
+            className="p-1 hover:bg-primary-foreground/20 rounded"
+            onClick={handleCancelConnection}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <TaskFormDialog
         open={isEditDialogOpen}

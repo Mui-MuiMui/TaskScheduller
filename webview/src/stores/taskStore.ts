@@ -198,6 +198,20 @@ export function initializeMessageHandler() {
         }));
         break;
 
+      case 'DEPENDENCY_CREATED':
+        const depCreatedPayload = message as { payload: { dependency: Dependency } };
+        useTaskStore.setState((state) => ({
+          dependencies: [...state.dependencies, depCreatedPayload.payload.dependency],
+        }));
+        break;
+
+      case 'DEPENDENCY_DELETED':
+        const depDeletedPayload = message as { payload: { dependencyId: string } };
+        useTaskStore.setState((state) => ({
+          dependencies: state.dependencies.filter((d) => d.id !== depDeletedPayload.payload.dependencyId),
+        }));
+        break;
+
       case 'CONFIG_CHANGED':
         const configPayload = message as { payload: { locale: string; theme: 'light' | 'dark' | 'high-contrast' } };
         setConfig(configPayload.payload);
@@ -210,16 +224,17 @@ export function initializeMessageHandler() {
         break;
 
       case 'COMMAND':
-        const commandPayload = message as { command: string; payload?: { view?: ViewType; projectId?: string } };
+        const commandPayload = message as { command: string; payload?: { view?: ViewType; projectId?: string | null } };
         if (commandPayload.command === 'SWITCH_VIEW' && commandPayload.payload?.view) {
           useTaskStore.setState({ currentView: commandPayload.payload.view });
         } else if (commandPayload.command === 'CREATE_TASK_DIALOG') {
           // This will be handled by UI component
           window.dispatchEvent(new CustomEvent('openCreateTaskDialog'));
-        } else if (commandPayload.command === 'SET_PROJECT' && commandPayload.payload?.projectId) {
-          useTaskStore.setState({ currentProjectId: commandPayload.payload.projectId });
-          // Reload tasks for new project
-          useTaskStore.getState().loadTasks();
+        } else if (commandPayload.command === 'SET_PROJECT') {
+          // projectId can be null to show all tasks (cross-project view)
+          const newProjectId = commandPayload.payload?.projectId || null;
+          useTaskStore.setState({ currentProjectId: newProjectId });
+          // Tasks will be reloaded by extension
         }
         break;
     }

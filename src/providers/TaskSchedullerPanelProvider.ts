@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { DatabaseManager } from '../database/DatabaseManager';
 import { TaskService } from '../services/TaskService';
+import type { SidebarViewProvider } from './SidebarViewProvider';
 import type {
   WebviewToExtensionMessage,
   ExtensionToWebviewMessage,
@@ -18,6 +19,7 @@ export class TaskSchedullerPanelProvider {
   public static readonly viewType = 'taskScheduller.mainPanel';
 
   private static _instance: TaskSchedullerPanelProvider | undefined;
+  private static _sidebarProvider?: SidebarViewProvider;
   private _panel?: vscode.WebviewPanel;
   private _taskService: TaskService;
   private _disposables: vscode.Disposable[] = [];
@@ -32,8 +34,12 @@ export class TaskSchedullerPanelProvider {
 
   public static getInstance(
     extensionUri: vscode.Uri,
-    databaseManager: DatabaseManager
+    databaseManager: DatabaseManager,
+    sidebarProvider?: SidebarViewProvider
   ): TaskSchedullerPanelProvider {
+    if (sidebarProvider) {
+      TaskSchedullerPanelProvider._sidebarProvider = sidebarProvider;
+    }
     if (!TaskSchedullerPanelProvider._instance) {
       TaskSchedullerPanelProvider._instance = new TaskSchedullerPanelProvider(
         extensionUri,
@@ -43,7 +49,12 @@ export class TaskSchedullerPanelProvider {
     return TaskSchedullerPanelProvider._instance;
   }
 
+  private _refreshSidebar(): void {
+    TaskSchedullerPanelProvider._sidebarProvider?.refresh();
+  }
+
   public show(projectId?: string): void {
+    const previousProjectId = this._currentProjectId;
     this._currentProjectId = projectId;
 
     const column = vscode.window.activeTextEditor
@@ -53,9 +64,11 @@ export class TaskSchedullerPanelProvider {
     // If panel exists, show it and update project
     if (this._panel) {
       this._panel.reveal(column);
-      // Send project change to webview
-      if (projectId) {
-        this.sendCommand('SET_PROJECT', { projectId });
+      // Send project change to webview (even if undefined, to show all tasks)
+      if (projectId !== previousProjectId) {
+        this.sendCommand('SET_PROJECT', { projectId: projectId || null });
+        // Reload tasks for new filter
+        this._loadTasks(crypto.randomUUID(), projectId ? { projectId } : undefined);
       }
       return;
     }
@@ -242,7 +255,11 @@ export class TaskSchedullerPanelProvider {
       ? P
       : never
   ): Promise<void> {
-    const task = this._taskService.createTask(payload);
+    // 現在のプロジェクトIDを追加
+    const taskData = this._currentProjectId
+      ? { ...payload, projectId: this._currentProjectId }
+      : payload;
+    const task = this._taskService.createTask(taskData);
     const message: TaskCreatedMessage = {
       id: requestId,
       timestamp: Date.now(),
@@ -250,6 +267,7 @@ export class TaskSchedullerPanelProvider {
       payload: { task },
     };
     this._postMessage(message);
+    this._refreshSidebar();
 
     vscode.window.showInformationMessage(vscode.l10n.t('message.taskCreated', task.title));
   }
@@ -312,6 +330,7 @@ export class TaskSchedullerPanelProvider {
         payload: { taskId },
       };
       this._postMessage(message);
+      this._refreshSidebar();
 
       vscode.window.showInformationMessage(vscode.l10n.t('message.taskDeleted'));
     } else {

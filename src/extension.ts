@@ -15,14 +15,15 @@ export async function activate(context: vscode.ExtensionContext) {
     await databaseManager.initialize();
     console.log('Database initialized successfully');
 
+    // Create sidebar view provider with database access
+    const sidebarProvider = new SidebarViewProvider(context.extensionUri, databaseManager);
+
     // Create panel provider (singleton)
     const panelProvider = TaskSchedullerPanelProvider.getInstance(
       context.extensionUri,
-      databaseManager
+      databaseManager,
+      sidebarProvider
     );
-
-    // Create sidebar view provider with database access
-    const sidebarProvider = new SidebarViewProvider(context.extensionUri, databaseManager);
 
     // Register sidebar view provider
     context.subscriptions.push(
