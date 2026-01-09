@@ -51,31 +51,32 @@ export function GanttView() {
     return filtered.filter((task) => task.startDate || task.dueDate);
   }, [tasks, showCompletedTasks]);
 
-  // Calculate date range - expanded periods: day=14, week=60, month=180
+  // Fixed cell widths per view mode
+  const cellWidth = viewMode === 'day' ? 40 : viewMode === 'week' ? 20 : 20;
+
+  // Calculate how many days can fit in the container
+  const visibleDays = useMemo(() => {
+    if (containerWidth <= 0) {
+      // Default fallback values
+      return viewMode === 'day' ? 14 : viewMode === 'week' ? 30 : 90;
+    }
+    const days = Math.floor(containerWidth / cellWidth);
+    // Ensure at least some minimum days are shown
+    return Math.max(days, 7);
+  }, [containerWidth, cellWidth, viewMode]);
+
+  // Calculate date range based on visible days
   const dateRange = useMemo(() => {
     const days: Date[] = [];
-    const dayCount = viewMode === 'day' ? 14 : viewMode === 'week' ? 60 : 180;
     const current = new Date(startDate);
 
-    for (let i = 0; i < dayCount; i++) {
+    for (let i = 0; i < visibleDays; i++) {
       days.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
 
     return days;
-  }, [startDate, viewMode]);
-
-  // Calculate cell width - for month view, fit to container width
-  const cellWidth = useMemo(() => {
-    if (viewMode === 'day') return 40;
-    if (viewMode === 'week') return 20;
-    // Month view: fit to container width, minimum 4px per day
-    if (containerWidth > 0) {
-      const calculatedWidth = Math.floor(containerWidth / dateRange.length);
-      return Math.max(calculatedWidth, 4);
-    }
-    return 8;
-  }, [viewMode, containerWidth, dateRange.length]);
+  }, [startDate, visibleDays]);
 
   const endDate = dateRange[dateRange.length - 1];
 
