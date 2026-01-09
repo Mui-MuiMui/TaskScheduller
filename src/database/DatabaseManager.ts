@@ -21,8 +21,6 @@ export class DatabaseManager {
     this._dbPath = path.join(context.globalStorageUri.fsPath, 'taskscheduller.db');
     this.wasmPath = path.join(
       context.extensionUri.fsPath,
-      'node_modules',
-      'sql.js',
       'dist',
       'sql-wasm.wasm'
     );
