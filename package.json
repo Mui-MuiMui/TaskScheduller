@@ -30,7 +30,8 @@
       {
         "command": "taskScheduller.openMainView",
         "title": "%command.openMainView%",
-        "category": "TaskScheduller"
+        "category": "TaskScheduller",
+        "icon": "$(checklist)"
       },
       {
         "command": "taskScheduller.createTask",
@@ -54,33 +55,6 @@
         "category": "TaskScheduller"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "taskScheduller",
-          "title": "TaskScheduller",
-          "icon": "resources/icons/task.svg"
-        }
-      ]
-    },
-    "views": {
-      "taskScheduller": [
-        {
-          "type": "webview",
-          "id": "taskScheduller.mainView",
-          "name": "Tasks"
-        }
-      ]
-    },
-    "menus": {
-      "view/title": [
-        {
-          "command": "taskScheduller.createTask",
-          "when": "view == taskScheduller.mainView",
-          "group": "navigation"
-        }
-      ]
-    },
     "configuration": {
       "title": "TaskScheduller",
       "properties": {

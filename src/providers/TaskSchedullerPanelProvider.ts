@@ -14,56 +14,104 @@ import type {
   ErrorMessage,
 } from '../models/messages';
 
-export class TaskSchedullerViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'taskScheduller.mainView';
+export class TaskSchedullerPanelProvider {
+  public static readonly viewType = 'taskScheduller.mainPanel';
 
-  private _view?: vscode.WebviewView;
+  private static _instance: TaskSchedullerPanelProvider | undefined;
+  private _panel?: vscode.WebviewPanel;
   private _taskService: TaskService;
+  private _disposables: vscode.Disposable[] = [];
 
-  constructor(
+  private constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _databaseManager: DatabaseManager
   ) {
     this._taskService = new TaskService(_databaseManager);
   }
 
-  public resolveWebviewView(
-    webviewView: vscode.WebviewView,
-    _context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken
-  ): void {
-    this._view = webviewView;
+  public static getInstance(
+    extensionUri: vscode.Uri,
+    databaseManager: DatabaseManager
+  ): TaskSchedullerPanelProvider {
+    if (!TaskSchedullerPanelProvider._instance) {
+      TaskSchedullerPanelProvider._instance = new TaskSchedullerPanelProvider(
+        extensionUri,
+        databaseManager
+      );
+    }
+    return TaskSchedullerPanelProvider._instance;
+  }
 
-    webviewView.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [
-        vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview'),
-        vscode.Uri.joinPath(this._extensionUri, 'resources'),
-      ],
-    };
+  public show(): void {
+    const column = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
 
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    // If panel exists, show it
+    if (this._panel) {
+      this._panel.reveal(column);
+      return;
+    }
 
-    // Handle messages from webview
-    webviewView.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) =>
-      this._handleMessage(message)
+    // Create new panel
+    this._panel = vscode.window.createWebviewPanel(
+      TaskSchedullerPanelProvider.viewType,
+      'TaskScheduller',
+      column || vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview'),
+          vscode.Uri.joinPath(this._extensionUri, 'resources'),
+        ],
+      }
     );
 
-    // Send initial config when view becomes visible
-    webviewView.onDidChangeVisibility(() => {
-      if (webviewView.visible) {
-        this._sendConfig();
-      }
-    });
+    this._panel.iconPath = vscode.Uri.joinPath(
+      this._extensionUri,
+      'resources',
+      'icons',
+      'task.svg'
+    );
+
+    this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
+
+    // Handle messages from webview
+    this._panel.webview.onDidReceiveMessage(
+      (message: WebviewToExtensionMessage) => this._handleMessage(message),
+      null,
+      this._disposables
+    );
+
+    // Handle panel disposal
+    this._panel.onDidDispose(() => this._dispose(), null, this._disposables);
+
+    // Listen for theme changes
+    vscode.window.onDidChangeActiveColorTheme(
+      () => this._sendConfig(),
+      null,
+      this._disposables
+    );
   }
 
   public sendCommand(command: string, payload?: unknown): void {
-    if (this._view) {
-      this._view.webview.postMessage({
+    if (this._panel) {
+      this._panel.webview.postMessage({
         type: 'COMMAND',
         command,
         payload,
       });
+    }
+  }
+
+  private _dispose(): void {
+    this._panel = undefined;
+    while (this._disposables.length) {
+      const d = this._disposables.pop();
+      if (d) {
+        d.dispose();
+      }
     }
   }
 
@@ -132,7 +180,6 @@ export class TaskSchedullerViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _sendConfig(): void {
-    const config = vscode.workspace.getConfiguration('taskScheduller');
     this._postMessage({
       id: crypto.randomUUID(),
       timestamp: Date.now(),
@@ -332,23 +379,19 @@ export class TaskSchedullerViewProvider implements vscode.WebviewViewProvider {
 
   private async _exportData(format: 'json' | 'csv' | 'markdown'): Promise<void> {
     let content: string;
-    let filename: string;
     let language: string;
 
     switch (format) {
       case 'json':
         content = this._taskService.exportToJson();
-        filename = 'tasks.json';
         language = 'json';
         break;
       case 'csv':
         content = this._taskService.exportToCsv();
-        filename = 'tasks.csv';
         language = 'csv';
         break;
       case 'markdown':
         content = this._taskService.exportToMarkdown();
-        filename = 'tasks.md';
         language = 'markdown';
         break;
     }
@@ -361,7 +404,7 @@ export class TaskSchedullerViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _postMessage(message: ExtensionToWebviewMessage): void {
-    this._view?.webview.postMessage(message);
+    this._panel?.webview.postMessage(message);
   }
 
   private _postError(requestId: string, code: string, message: string): void {

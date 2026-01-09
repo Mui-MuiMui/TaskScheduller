@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
 import { useTaskStore } from '@/stores/taskStore';
+import { useI18n } from '@/i18n';
 import { KanbanColumn } from './KanbanColumn';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
 import type { Task, TaskStatus } from '@/types';
 import { KANBAN_COLUMNS } from '@/types';
 
 export function KanbanView() {
+  const { t } = useI18n();
   const { tasks, reorderTasks, updateTaskStatus } = useTaskStore();
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -71,7 +73,7 @@ export function KanbanView() {
                 {(provided, snapshot) => (
                   <KanbanColumn
                     status={column.status}
-                    label={column.label}
+                    label={t(column.labelKey)}
                     tasks={columnTasks}
                     provided={provided}
                     isDraggingOver={snapshot.isDraggingOver}

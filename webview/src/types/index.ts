@@ -65,17 +65,17 @@ export interface UpdateTaskDto extends Partial<CreateTaskDto> {
 
 export type ViewType = 'todo' | 'kanban' | 'gantt';
 
-export const KANBAN_COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: 'todo', label: 'To Do' },
-  { status: 'in_progress', label: 'In Progress' },
-  { status: 'done', label: 'Done' },
+export const KANBAN_COLUMNS: { status: TaskStatus; labelKey: string }[] = [
+  { status: 'todo', labelKey: 'status.todo' },
+  { status: 'in_progress', labelKey: 'status.inProgress' },
+  { status: 'done', labelKey: 'status.done' },
 ];
 
-export const PRIORITY_LABELS: Record<Priority, string> = {
-  1: 'Low',
-  2: 'Medium',
-  3: 'High',
-  4: 'Urgent',
+export const PRIORITY_LABEL_KEYS: Record<Priority, string> = {
+  1: 'priority.low',
+  2: 'priority.medium',
+  3: 'priority.high',
+  4: 'priority.urgent',
 };
 
 export const PRIORITY_COLORS: Record<Priority, string> = {

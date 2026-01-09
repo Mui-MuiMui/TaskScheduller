@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
-import { PRIORITY_LABELS } from '@/types';
+import { PRIORITY_LABEL_KEYS } from '@/types';
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -152,7 +152,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                 <SelectContent>
                   {([1, 2, 3, 4] as Priority[]).map((p) => (
                     <SelectItem key={p} value={String(p)}>
-                      {PRIORITY_LABELS[p]}
+                      {t(PRIORITY_LABEL_KEYS[p])}
                     </SelectItem>
                   ))}
                 </SelectContent>

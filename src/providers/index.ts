@@ -1,1 +1,1 @@
-export { TaskSchedullerViewProvider } from './TaskSchedullerViewProvider';
+export { TaskSchedullerPanelProvider } from './TaskSchedullerPanelProvider';

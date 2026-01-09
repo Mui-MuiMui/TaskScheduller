@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
+import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +9,7 @@ import type { Task } from '@/types';
 type ViewMode = 'day' | 'week' | 'month';
 
 export function GanttView() {
+  const { t, locale } = useI18n();
   const { tasks } = useTaskStore();
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [startDate, setStartDate] = useState(() => {
@@ -86,7 +88,7 @@ export function GanttView() {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-muted-foreground">
-          No tasks with dates. Add start/due dates to see them in the Gantt chart.
+          {t('message.noTasksWithDates')}
         </p>
       </div>
     );
@@ -101,7 +103,7 @@ export function GanttView() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="sm" onClick={handleToday}>
-            Today
+            {t('action.today')}
           </Button>
           <Button variant="ghost" size="icon" onClick={handleNext}>
             <ChevronRight className="h-4 w-4" />
@@ -114,21 +116,21 @@ export function GanttView() {
             size="sm"
             onClick={() => setViewMode('day')}
           >
-            Day
+            {t('gantt.day')}
           </Button>
           <Button
             variant={viewMode === 'week' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('week')}
           >
-            Week
+            {t('gantt.week')}
           </Button>
           <Button
             variant={viewMode === 'month' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('month')}
           >
-            Month
+            {t('gantt.month')}
           </Button>
         </div>
       </div>
@@ -139,7 +141,7 @@ export function GanttView() {
           {/* Header with dates */}
           <div className="flex border-b border-border sticky top-0 bg-background z-10">
             <div className="w-[200px] shrink-0 p-2 border-r border-border text-xs font-medium">
-              Task
+              {t('task.task')}
             </div>
             <div className="flex-1 flex">
               {dateRange.map((date, index) => {
@@ -164,7 +166,7 @@ export function GanttView() {
                       <>
                         <div>{date.getDate()}</div>
                         <div className="text-muted-foreground">
-                          {date.toLocaleDateString('en', { month: 'short' })}
+                          {date.toLocaleDateString(locale, { month: 'short' })}
                         </div>
                       </>
                     )}
@@ -224,7 +226,7 @@ export function GanttView() {
                         width: position.width,
                         minWidth: '4px',
                       }}
-                      title={`${task.title}\n${task.progress}% complete`}
+                      title={`${task.title}\n${task.progress}% ${t('message.complete')}`}
                     >
                       {/* Progress indicator */}
                       <div

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { DatabaseManager } from './database/DatabaseManager';
-import { TaskSchedullerViewProvider } from './providers/TaskSchedullerViewProvider';
+import { TaskSchedullerPanelProvider } from './providers/TaskSchedullerPanelProvider';
 import { registerCommands } from './commands';
 
 let databaseManager: DatabaseManager | undefined;
@@ -14,16 +14,10 @@ export async function activate(context: vscode.ExtensionContext) {
     await databaseManager.initialize();
     console.log('Database initialized successfully');
 
-    // Create webview provider
-    const provider = new TaskSchedullerViewProvider(context.extensionUri, databaseManager);
-
-    // Register webview provider
-    context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider(TaskSchedullerViewProvider.viewType, provider, {
-        webviewOptions: {
-          retainContextWhenHidden: true,
-        },
-      })
+    // Create panel provider (singleton)
+    const provider = TaskSchedullerPanelProvider.getInstance(
+      context.extensionUri,
+      databaseManager
     );
 
     // Register commands

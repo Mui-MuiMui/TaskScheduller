@@ -19,8 +19,8 @@ export function getLocale(): string {
   return currentLocale;
 }
 
-export function t(key: TranslationKey, ...args: (string | number)[]): string {
-  const template = locales[currentLocale]?.[key] ?? locales['en']?.[key] ?? key;
+export function t(key: TranslationKey | string, ...args: (string | number)[]): string {
+  const template = locales[currentLocale]?.[key as TranslationKey] ?? locales['en']?.[key as TranslationKey] ?? key;
   return template.replace(/\{(\d+)\}/g, (_, index) => String(args[parseInt(index)] ?? ''));
 }
 
