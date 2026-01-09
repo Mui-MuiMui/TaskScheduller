@@ -54,6 +54,7 @@ export interface CreateTaskDto {
   startDate?: string;
   assignee?: string;
   estimatedHours?: number;
+  progress?: number;
   parentId?: string;
   labelIds?: string[];
 }

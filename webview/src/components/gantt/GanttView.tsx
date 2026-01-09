@@ -29,7 +29,7 @@ interface ColumnData {
 export function GanttView() {
   const { t, locale } = useI18n();
   const { tasks, updateTaskApi, showCompletedTasks } = useTaskStore();
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
     today.setDate(today.getDate() - 7);
@@ -487,15 +487,24 @@ export function GanttView() {
                     const finalLeft = position.leftPx + leftOffset;
                     const finalWidth = Math.max(position.widthPx + widthOffset, 20);
 
+                    // Define colors based on status
+                    const bgColor = task.status === 'done'
+                      ? 'bg-green-500/30'
+                      : task.status === 'in_progress'
+                      ? 'bg-yellow-500/30'
+                      : 'bg-blue-500/30';
+
+                    const progressColor = task.status === 'done'
+                      ? 'bg-green-500'
+                      : task.status === 'in_progress'
+                      ? 'bg-yellow-500'
+                      : 'bg-blue-500';
+
                     return (
                       <div
                         className={cn(
-                          'absolute top-1/2 -translate-y-1/2 h-7 rounded group',
-                          task.status === 'done'
-                            ? 'bg-green-500/80'
-                            : task.status === 'in_progress'
-                            ? 'bg-yellow-500/80'
-                            : 'bg-blue-500/80',
+                          'absolute top-1/2 -translate-y-1/2 h-7 rounded group overflow-hidden',
+                          bgColor,
                           isDragging ? 'cursor-grabbing shadow-lg' : 'cursor-grab hover:brightness-110'
                         )}
                         style={{
@@ -505,9 +514,9 @@ export function GanttView() {
                         title={`${task.title}\n${task.progress}% ${t('message.complete')}`}
                         onMouseDown={(e) => handleDragStart(e, task, 'move')}
                       >
-                        {/* Progress indicator */}
+                        {/* Progress indicator - filled portion */}
                         <div
-                          className="h-full rounded bg-white/20 pointer-events-none"
+                          className={cn('h-full rounded-l pointer-events-none', progressColor)}
                           style={{ width: `${task.progress}%` }}
                         />
 

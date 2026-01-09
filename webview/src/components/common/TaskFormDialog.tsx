@@ -39,6 +39,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
     startDate: '',
     assignee: '',
     estimatedHours: undefined,
+    progress: 0,
   });
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
         startDate: task.startDate || '',
         assignee: task.assignee || '',
         estimatedHours: task.estimatedHours || undefined,
+        progress: task.progress || 0,
       });
     } else {
       setFormData({
@@ -63,6 +65,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
         startDate: '',
         assignee: '',
         estimatedHours: undefined,
+        progress: 0,
       });
     }
   }, [task, open]);
@@ -78,6 +81,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
       startDate: formData.startDate || undefined,
       assignee: formData.assignee || undefined,
       estimatedHours: formData.estimatedHours || undefined,
+      progress: formData.progress ?? 0,
     };
 
     if (isEditMode && task) {
@@ -203,6 +207,20 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                 placeholder="0"
               />
             </div>
+          </div>
+
+          {/* Progress */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium">{t('task.progress')} ({formData.progress}%)</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={formData.progress}
+              onChange={(e) => setFormData({ ...formData, progress: Number(e.target.value) })}
+              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+            />
           </div>
 
           <DialogFooter>
