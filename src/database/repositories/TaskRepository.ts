@@ -151,7 +151,7 @@ export class TaskRepository {
         dto.startDate ?? null,
         dto.assignee ?? null,
         dto.estimatedHours ?? null,
-        0, // progress
+        dto.progress ?? 0,
         dto.parentId ?? null,
         sortOrder,
         now,

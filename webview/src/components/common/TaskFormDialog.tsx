@@ -32,6 +32,21 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
   const { tasks, dependencies, createTask, updateTaskApi, createDependency, deleteDependency } = useTaskStore();
   const isEditMode = !!task;
 
+  const [formData, setFormData] = useState<CreateTaskDto>({
+    title: '',
+    description: '',
+    status: 'todo',
+    priority: 2,
+    dueDate: '',
+    startDate: '',
+    assignee: '',
+    estimatedHours: undefined,
+    progress: 0,
+  });
+
+  // 新規作成時の先行タスク選択用
+  const [selectedPredecessorIds, setSelectedPredecessorIds] = useState<string[]>([]);
+
   // 現在のタスクの先行タスク（依存関係）を取得
   const currentDependencies = useMemo(() => {
     if (!task) return [];
@@ -46,25 +61,19 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
 
   // 選択可能な先行タスク（自分自身と既に依存関係にあるタスクを除外）
   const availablePredecessors = useMemo(() => {
-    if (!task) return [];
-    const existingPredecessorIds = new Set(currentDependencies.map(d => d.dependency.predecessorId));
-    return tasks.filter(t =>
-      t.id !== task.id &&
-      !existingPredecessorIds.has(t.id)
-    );
-  }, [task, tasks, currentDependencies]);
-
-  const [formData, setFormData] = useState<CreateTaskDto>({
-    title: '',
-    description: '',
-    status: 'todo',
-    priority: 2,
-    dueDate: '',
-    startDate: '',
-    assignee: '',
-    estimatedHours: undefined,
-    progress: 0,
-  });
+    if (isEditMode && task) {
+      // 編集モード: 既存の依存関係にあるタスクを除外
+      const existingPredecessorIds = new Set(currentDependencies.map(d => d.dependency.predecessorId));
+      return tasks.filter(t =>
+        t.id !== task.id &&
+        !existingPredecessorIds.has(t.id)
+      );
+    } else {
+      // 新規作成モード: 選択済みのタスクを除外
+      const selectedIds = new Set(selectedPredecessorIds);
+      return tasks.filter(t => !selectedIds.has(t.id));
+    }
+  }, [isEditMode, task, tasks, currentDependencies, selectedPredecessorIds]);
 
   useEffect(() => {
     if (task) {
@@ -91,6 +100,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
         estimatedHours: undefined,
         progress: 0,
       });
+      setSelectedPredecessorIds([]);
     }
   }, [task, open]);
 
@@ -118,7 +128,8 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
     if (isEditMode && task) {
       updateTaskApi(task.id, cleanedData);
     } else {
-      createTask(cleanedData);
+      // 新規作成時は先行タスクのIDリストを含めて作成
+      createTask(cleanedData, selectedPredecessorIds);
     }
 
     onOpenChange(false);
@@ -286,60 +297,90 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             </div>
           </div>
 
-          {/* Dependencies - 編集モードのみ表示 */}
-          {isEditMode && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium">{t('task.dependencies')}</label>
+          {/* Dependencies */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium">{t('task.dependencies')}</label>
 
-              {/* 現在の依存関係（先行タスク）一覧 */}
-              {currentDependencies.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {currentDependencies.map(({ dependency, predecessorTask }) => (
+            {/* 編集モード: 現在の依存関係（先行タスク）一覧 */}
+            {isEditMode && currentDependencies.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {currentDependencies.map(({ dependency, predecessorTask }) => (
+                  <Badge
+                    key={dependency.id}
+                    variant="secondary"
+                    className="flex items-center gap-1 pr-1"
+                  >
+                    <span className="max-w-[150px] truncate">{predecessorTask!.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDependency(dependency.id)}
+                      className="ml-1 hover:bg-muted rounded p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* 新規作成モード: 選択した先行タスク一覧 */}
+            {!isEditMode && selectedPredecessorIds.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedPredecessorIds.map(predId => {
+                  const predTask = tasks.find(t => t.id === predId);
+                  if (!predTask) return null;
+                  return (
                     <Badge
-                      key={dependency.id}
+                      key={predId}
                       variant="secondary"
                       className="flex items-center gap-1 pr-1"
                     >
-                      <span className="max-w-[150px] truncate">{predecessorTask!.title}</span>
+                      <span className="max-w-[150px] truncate">{predTask.title}</span>
                       <button
                         type="button"
-                        onClick={() => handleRemoveDependency(dependency.id)}
+                        onClick={() => setSelectedPredecessorIds(prev => prev.filter(id => id !== predId))}
                         className="ml-1 hover:bg-muted rounded p-0.5"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 先行タスク追加 */}
+            {availablePredecessors.length > 0 && (
+              <Select
+                value=""
+                onValueChange={(predecessorId) => {
+                  if (isEditMode) {
+                    handleAddDependency(predecessorId);
+                  } else {
+                    setSelectedPredecessorIds(prev => [...prev, predecessorId]);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('task.selectPredecessor')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePredecessors.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-3 w-3" />
+                        {t.title}
+                      </span>
+                    </SelectItem>
                   ))}
-                </div>
-              )}
+                </SelectContent>
+              </Select>
+            )}
 
-              {/* 先行タスク追加 - 選択したら即座に追加 */}
-              {availablePredecessors.length > 0 && (
-                <Select
-                  value=""
-                  onValueChange={handleAddDependency}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('task.selectPredecessor')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availablePredecessors.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        <span className="flex items-center gap-2">
-                          <Plus className="h-3 w-3" />
-                          {t.title}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {availablePredecessors.length === 0 && currentDependencies.length === 0 && (
-                <p className="text-xs text-muted-foreground">{t('task.noDependenciesAvailable')}</p>
-              )}
-            </div>
-          )}
+            {availablePredecessors.length === 0 && (isEditMode ? currentDependencies.length === 0 : selectedPredecessorIds.length === 0) && tasks.length === 0 && (
+              <p className="text-xs text-muted-foreground">{t('task.noDependenciesAvailable')}</p>
+            )}
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -47,7 +47,7 @@ interface TaskState {
 
   // Actions - API calls (send to extension)
   loadTasks: () => void;
-  createTask: (dto: CreateTaskDto) => void;
+  createTask: (dto: CreateTaskDto, predecessorIds?: string[]) => void;
   updateTaskApi: (taskId: string, updates: UpdateTaskDto) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   deleteTask: (taskId: string) => void;
@@ -109,8 +109,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     postMessage({ type: 'LOAD_TASKS', payload: { filter: projectId ? { projectId } : undefined } });
   },
 
-  createTask: (dto) => {
-    postMessage({ type: 'CREATE_TASK', payload: dto });
+  createTask: (dto, predecessorIds) => {
+    postMessage({ type: 'CREATE_TASK', payload: { ...dto, predecessorIds } });
   },
 
   updateTaskApi: (taskId, updates) => {

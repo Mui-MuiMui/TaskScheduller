@@ -255,11 +255,22 @@ export class TaskSchedullerPanelProvider {
       ? P
       : never
   ): Promise<void> {
+    // predecessorIdsを取り出す
+    const { predecessorIds, ...taskPayload } = payload as typeof payload & { predecessorIds?: string[] };
+
     // 現在のプロジェクトIDを追加
     const taskData = this._currentProjectId
-      ? { ...payload, projectId: this._currentProjectId }
-      : payload;
+      ? { ...taskPayload, projectId: this._currentProjectId }
+      : taskPayload;
     const task = this._taskService.createTask(taskData);
+
+    // 先行タスクの依存関係を作成
+    if (predecessorIds && predecessorIds.length > 0) {
+      for (const predecessorId of predecessorIds) {
+        this._taskService.createDependency(predecessorId, task.id);
+      }
+    }
+
     const message: TaskCreatedMessage = {
       id: requestId,
       timestamp: Date.now(),
@@ -267,6 +278,12 @@ export class TaskSchedullerPanelProvider {
       payload: { task },
     };
     this._postMessage(message);
+
+    // 依存関係が作成された場合は全データをリロード
+    if (predecessorIds && predecessorIds.length > 0) {
+      this._loadTasks(crypto.randomUUID(), this._currentProjectId ? { projectId: this._currentProjectId } : undefined);
+    }
+
     this._refreshSidebar();
 
     vscode.window.showInformationMessage(vscode.l10n.t('message.taskCreated', task.title));
