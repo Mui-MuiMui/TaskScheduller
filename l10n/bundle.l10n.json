@@ -1,0 +1,14 @@
+{
+  "command.openMainView": "Open Task Manager",
+  "command.createTask": "Create New Task",
+  "command.switchToTodo": "Switch to Todo List",
+  "command.switchToKanban": "Switch to Kanban Board",
+  "command.switchToGantt": "Switch to Gantt Chart",
+  "config.defaultView": "Default view when opening Task Manager",
+  "config.autoSave": "Automatically save changes",
+  "message.taskCreated": "Task '{0}' has been created",
+  "message.taskUpdated": "Task '{0}' has been updated",
+  "message.taskDeleted": "Task deleted successfully",
+  "error.invalidTask": "Invalid task data",
+  "error.dbInit": "Failed to initialize database"
+}

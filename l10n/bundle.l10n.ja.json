@@ -1,0 +1,14 @@
+{
+  "command.openMainView": "タスクマネージャーを開く",
+  "command.createTask": "新しいタスクを作成",
+  "command.switchToTodo": "ToDoリストに切り替え",
+  "command.switchToKanban": "カンバンボードに切り替え",
+  "command.switchToGantt": "ガントチャートに切り替え",
+  "config.defaultView": "タスクマネージャーを開いたときの既定のビュー",
+  "config.autoSave": "変更を自動保存する",
+  "message.taskCreated": "タスク「{0}」を作成しました",
+  "message.taskUpdated": "タスク「{0}」を更新しました",
+  "message.taskDeleted": "タスクを削除しました",
+  "error.invalidTask": "無効なタスクデータです",
+  "error.dbInit": "データベースの初期化に失敗しました"
+}
