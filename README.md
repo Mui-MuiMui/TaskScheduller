@@ -112,11 +112,3 @@ npm run lint
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Author
-
-[Mui-MuiMui](https://github.com/Mui-MuiMui)

@@ -112,11 +112,3 @@ npm run lint
 ## ライセンス
 
 MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
-
-## コントリビュート
-
-コントリビューションを歓迎します！お気軽にPull Requestを送ってください。
-
-## 作者
-
-[Mui-MuiMui](https://github.com/Mui-MuiMui)
