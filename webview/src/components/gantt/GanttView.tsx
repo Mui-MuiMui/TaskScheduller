@@ -4,6 +4,7 @@ import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TaskFormDialog } from '@/components/common/TaskFormDialog';
 import type { Task } from '@/types';
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -38,6 +39,13 @@ export function GanttView() {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleEditTask = useCallback((task: Task) => {
+    setEditingTask(task);
+    setIsEditDialogOpen(true);
+  }, []);
 
   // Track container width for responsive sizing
   useEffect(() => {
@@ -513,6 +521,10 @@ export function GanttView() {
                         }}
                         title={`${task.title}\n${task.progress}% ${t('message.complete')}`}
                         onMouseDown={(e) => handleDragStart(e, task, 'move')}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          handleEditTask(task);
+                        }}
                       >
                         {/* Progress indicator - filled portion */}
                         <div
@@ -554,6 +566,12 @@ export function GanttView() {
           })}
         </div>
       </div>
+
+      <TaskFormDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        task={editingTask}
+      />
     </div>
   );
 }

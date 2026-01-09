@@ -211,16 +211,32 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
 
           {/* Progress */}
           <div className="space-y-1">
-            <label className="text-xs font-medium">{t('task.progress')} ({formData.progress}%)</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              value={formData.progress}
-              onChange={(e) => setFormData({ ...formData, progress: Number(e.target.value) })}
-              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-            />
+            <label className="text-xs font-medium">{t('task.progress')}</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={formData.progress}
+                onChange={(e) => setFormData({ ...formData, progress: Number(e.target.value) })}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={formData.progress}
+                onChange={(e) => {
+                  const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                  setFormData({ ...formData, progress: val });
+                }}
+                className="w-16 text-center"
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
           </div>
 
           <DialogFooter>
