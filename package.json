@@ -55,6 +55,34 @@
         "category": "TaskScheduller"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "taskScheduller",
+          "title": "TaskScheduller",
+          "icon": "resources/icons/task.svg"
+        }
+      ]
+    },
+    "views": {
+      "taskScheduller": [
+        {
+          "type": "webview",
+          "id": "taskScheduller.sidebarView",
+          "name": "TaskScheduller",
+          "icon": "resources/icons/task.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "taskScheduller.openMainView",
+          "when": "view == taskScheduller.sidebarView",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "TaskScheduller",
       "properties": {

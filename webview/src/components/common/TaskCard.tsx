@@ -2,7 +2,7 @@ import type { Task } from '@/types';
 import { Card, CardContent, Badge, Progress } from '@/components/ui';
 import { Calendar, User, Clock, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PRIORITY_COLORS } from '@/types';
+import { STATUS_COLORS } from '@/types';
 
 interface TaskCardProps {
   task: Task;
@@ -23,10 +23,10 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
       onClick={onClick}
     >
       <CardContent className="p-2 space-y-2">
-        {/* Title and Priority */}
+        {/* Title and Status */}
         <div className="flex items-start justify-between gap-2">
           <span className="text-sm font-medium leading-tight">{task.title}</span>
-          <Flag className={cn('h-3 w-3 shrink-0', PRIORITY_COLORS[task.priority])} />
+          <Flag className={cn('h-3 w-3 shrink-0', STATUS_COLORS[task.status])} />
         </div>
 
         {/* Labels */}

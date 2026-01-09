@@ -84,3 +84,9 @@ export const PRIORITY_COLORS: Record<Priority, string> = {
   3: 'text-orange-500',
   4: 'text-red-500',
 };
+
+export const STATUS_COLORS: Record<TaskStatus, string> = {
+  todo: 'text-blue-500',
+  in_progress: 'text-yellow-500',
+  done: 'text-green-500',
+};

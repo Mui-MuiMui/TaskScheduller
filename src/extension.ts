@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { DatabaseManager } from './database/DatabaseManager';
 import { TaskSchedullerPanelProvider } from './providers/TaskSchedullerPanelProvider';
+import { SidebarViewProvider } from './providers/SidebarViewProvider';
 import { registerCommands } from './commands';
 
 let databaseManager: DatabaseManager | undefined;
@@ -15,13 +16,24 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log('Database initialized successfully');
 
     // Create panel provider (singleton)
-    const provider = TaskSchedullerPanelProvider.getInstance(
+    const panelProvider = TaskSchedullerPanelProvider.getInstance(
       context.extensionUri,
       databaseManager
     );
 
+    // Create sidebar view provider
+    const sidebarProvider = new SidebarViewProvider(context.extensionUri);
+
+    // Register sidebar view provider
+    context.subscriptions.push(
+      vscode.window.registerWebviewViewProvider(
+        SidebarViewProvider.viewType,
+        sidebarProvider
+      )
+    );
+
     // Register commands
-    registerCommands(context, provider);
+    registerCommands(context, panelProvider);
 
     console.log('TaskScheduller extension activated successfully');
   } catch (error) {
