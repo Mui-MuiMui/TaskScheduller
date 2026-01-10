@@ -31,7 +31,8 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
   const { t } = useI18n();
   const { tasks, dependencies, projects, currentProjectId, createTask, updateTaskApi, createDependency, deleteDependency } = useTaskStore();
   const isEditMode = !!task;
-  const showProjectSelect = !isEditMode && currentProjectId === null;
+  // Show project select in All Tasks mode (for both new and edit)
+  const showProjectSelect = currentProjectId === null;
 
   const [formData, setFormData] = useState<CreateTaskDto>({
     projectId: undefined,
@@ -160,10 +161,10 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Project (only shown in All Tasks view when creating new task) */}
+          {/* Project (shown in All Tasks view for both create and edit) */}
           {showProjectSelect && projects.length > 0 && (
             <div className="space-y-1">
-              <label className="text-xs font-medium">{t('task.project')} *</label>
+              <label className="text-xs font-medium">{t('task.project')}{!isEditMode && ' *'}</label>
               <Select
                 value={formData.projectId || ''}
                 onValueChange={(value) => setFormData({ ...formData, projectId: value })}
@@ -420,7 +421,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             </Button>
             <Button
               type="submit"
-              disabled={!formData.title.trim() || (showProjectSelect && !formData.projectId)}
+              disabled={!formData.title.trim() || (showProjectSelect && !isEditMode && !formData.projectId)}
             >
               {isEditMode ? t('action.save') : t('action.create')}
             </Button>

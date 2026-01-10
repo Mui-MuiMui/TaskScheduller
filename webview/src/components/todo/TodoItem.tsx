@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo } from 'react';
 import type { Task } from '@/types';
 import { Checkbox, Badge, Progress } from '@/components/ui';
 import { useTaskStore } from '@/stores/taskStore';
-import { Calendar, User, Flag, Trash2, Edit2 } from 'lucide-react';
+import { Calendar, User, Flag, Trash2, Edit2, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PRIORITY_COLORS } from '@/types';
 
@@ -12,7 +12,13 @@ interface TodoItemProps {
 }
 
 export const TodoItem = memo(function TodoItem({ task, onEdit }: TodoItemProps) {
-  const { updateTaskStatus, deleteTask } = useTaskStore();
+  const { updateTaskStatus, deleteTask, currentProjectId, projects } = useTaskStore();
+
+  // Get project info for this task (only shown in All Tasks mode)
+  const projectInfo = useMemo(() => {
+    if (currentProjectId !== null || !task.projectId) return null;
+    return projects.find(p => p.id === task.projectId);
+  }, [currentProjectId, task.projectId, projects]);
 
   const isOverdue = useMemo(() =>
     task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done',
@@ -54,6 +60,19 @@ export const TodoItem = memo(function TodoItem({ task, onEdit }: TodoItemProps) 
         )}
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Project indicator (only in All Tasks mode) */}
+          {projectInfo && (
+            <div className="flex items-center gap-0.5 text-[10px]">
+              <FolderOpen className="h-2.5 w-2.5" />
+              <span
+                className="px-1 py-0 rounded"
+                style={{ backgroundColor: projectInfo.color + '20', color: projectInfo.color }}
+              >
+                {projectInfo.name}
+              </span>
+            </div>
+          )}
+
           {/* Labels */}
           {task.labels && task.labels.length > 0 && (
             <div className="flex flex-wrap gap-1">

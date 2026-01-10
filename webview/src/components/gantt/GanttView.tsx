@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui';
-import { ChevronLeft, ChevronRight, Link2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, X, FolderOpen, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
 import type { Task } from '@/types';
@@ -24,6 +24,13 @@ interface DragState {
   initialEndDate: Date | null;
 }
 
+// Row drag state for reordering tasks
+interface RowDragState {
+  taskId: string;
+  initialIndex: number;
+  currentIndex: number;
+}
+
 // Column data for week/month views
 interface ColumnData {
   label: string;
@@ -35,7 +42,7 @@ interface ColumnData {
 
 export function GanttView() {
   const { t, locale } = useI18n();
-  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks } = useTaskStore();
+  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks, currentProjectId, projects, reorderTasks } = useTaskStore();
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -43,6 +50,7 @@ export function GanttView() {
     return today;
   });
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [rowDragState, setRowDragState] = useState<RowDragState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
@@ -377,18 +385,57 @@ export function GanttView() {
     setConnectionState(null);
   }, []);
 
-  // Get task index in the displayed list
-  const taskIndexMap = new Map<string, number>();
-  tasksWithDates.forEach((task, index) => {
-    taskIndexMap.set(task.id, index);
-  });
+  // Row drag handlers for reordering tasks
+  const handleRowDragStart = useCallback((e: React.DragEvent, taskId: string, index: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', taskId);
+    setRowDragState({
+      taskId,
+      initialIndex: index,
+      currentIndex: index,
+    });
+  }, []);
+
+  const handleRowDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setRowDragState(prev => prev ? { ...prev, currentIndex: index } : null);
+  }, []);
+
+  const handleRowDragEnd = useCallback(() => {
+    if (!rowDragState) return;
+
+    const { initialIndex, currentIndex } = rowDragState;
+    if (initialIndex !== currentIndex) {
+      // Reorder the tasks
+      const reorderedTasks = [...tasksWithDates];
+      const [movedTask] = reorderedTasks.splice(initialIndex, 1);
+      reorderedTasks.splice(currentIndex, 0, movedTask);
+
+      // Call reorder with new order
+      const taskIds = reorderedTasks.map(t => t.id);
+      reorderTasks(taskIds);
+    }
+
+    setRowDragState(null);
+  }, [rowDragState, tasksWithDates, reorderTasks]);
 
   // Calculate dependency arrow paths
-  const rowHeight = 56; // Height of each task row
+  // Use taller rows in All Tasks mode to accommodate project indicator
+  const rowHeight = currentProjectId === null ? 72 : 56;
   const barHeight = 28; // Height of the task bar
   const verticalPadding = (rowHeight - barHeight) / 2;
 
-  const dependencyArrows = dependencies
+  // Get task index in the displayed list (memoized)
+  const taskIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    tasksWithDates.forEach((task, index) => {
+      map.set(task.id, index);
+    });
+    return map;
+  }, [tasksWithDates]);
+
+  const dependencyArrows = useMemo(() => dependencies
     .filter(dep => {
       // Only show dependencies where both tasks are visible
       const predIndex = taskIndexMap.get(dep.predecessorId);
@@ -514,7 +561,8 @@ export function GanttView() {
       endY: number;
       predecessorId: string;
       successorId: string;
-    }>;
+    }>
+  , [dependencies, tasksWithDates, taskIndexMap, getTaskPosition, rowHeight, verticalPadding, currentProjectId]);
 
   if (tasksWithDates.length === 0) {
     return (
@@ -618,7 +666,7 @@ export function GanttView() {
               className="absolute top-0 left-[220px] pointer-events-none z-10"
               style={{
                 width: totalChartWidth,
-                height: tasksWithDates.length * 56,
+                height: tasksWithDates.length * rowHeight,
               }}
             >
               <defs>
@@ -665,29 +713,69 @@ export function GanttView() {
             </svg>
 
             {/* Task rows */}
-            {tasksWithDates.map((task) => {
+            {tasksWithDates.map((task, index) => {
               const position = getTaskPosition(task);
               const isDragging = dragState?.taskId === task.id;
+              const isRowDragging = rowDragState?.taskId === task.id;
+              const isDropTarget = rowDragState && rowDragState.currentIndex === index && rowDragState.taskId !== task.id;
               const isConnectionSource = connectionState?.predecessorId === task.id;
               const isConnectionTarget = connectionState && connectionState.predecessorId !== task.id;
 
               return (
                 <div
                   key={task.id}
+                  draggable={!connectionState}
+                  onDragStart={(e) => handleRowDragStart(e, task.id, index)}
+                  onDragOver={(e) => handleRowDragOver(e, index)}
+                  onDragEnd={handleRowDragEnd}
                   className={cn(
                     'flex border-b border-border hover:bg-muted/30',
-                    isConnectionTarget && 'cursor-pointer hover:bg-primary/20'
+                    isConnectionTarget && 'cursor-pointer hover:bg-primary/20',
+                    isRowDragging && 'opacity-50 bg-muted/50',
+                    isDropTarget && 'border-t-2 border-t-primary'
                   )}
+                  style={{ height: rowHeight }}
                   onClick={() => {
                     if (isConnectionTarget) {
                       handleCompleteConnection(task.id);
                     }
                   }}
                 >
-                  <div className="w-[220px] shrink-0 p-3 border-r border-border flex items-center gap-2 sticky left-0 bg-background z-[5]">
-                    <div className="flex-1 min-w-0">
+                  <div className="w-[220px] shrink-0 p-3 border-r border-border flex items-center gap-2 sticky left-0 bg-background z-[5]" style={{ height: rowHeight }}>
+                    {/* Drag handle */}
+                    <div className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+                      <GripVertical className="h-4 w-4" />
+                    </div>
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+                      onDoubleClick={(e) => {
+                        if (!connectionState) {
+                          e.stopPropagation();
+                          handleEditTask(task);
+                        }
+                      }}
+                      title={t('action.edit')}
+                    >
+                      {/* Title */}
                       <div className="text-sm font-medium truncate">{task.title}</div>
-                      <div className="text-xs text-muted-foreground">
+                      {/* Project indicator in All Tasks mode */}
+                      {currentProjectId === null && task.projectId && (() => {
+                        const projectInfo = projects.find(p => p.id === task.projectId);
+                        if (!projectInfo) return null;
+                        return (
+                          <div className="flex items-center gap-0.5 text-xs truncate">
+                            <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
+                            <span
+                              className="px-1 py-0 rounded truncate"
+                              style={{ backgroundColor: projectInfo.color + '20', color: projectInfo.color }}
+                            >
+                              {projectInfo.name}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                      {/* Date range */}
+                      <div className="text-xs text-muted-foreground truncate">
                         {task.startDate && new Date(task.startDate).toLocaleDateString()}
                         {task.startDate && task.dueDate && ' - '}
                         {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
@@ -717,7 +805,7 @@ export function GanttView() {
                       </span>
                     )}
                   </div>
-                  <div className="flex-1 relative h-[56px]">
+                  <div className="flex-1 relative" style={{ height: rowHeight }}>
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex">
                       {columns.map((col, index) => {
