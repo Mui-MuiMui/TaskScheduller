@@ -2,7 +2,7 @@
   "name": "taskscheduller",
   "displayName": "TaskScheduller",
   "description": "Task management with Todo list, Kanban board, and Gantt chart views",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "publisher": "mui-muimui",
   "license": "MIT",
   "repository": {
