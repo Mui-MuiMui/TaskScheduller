@@ -137,3 +137,25 @@ export interface TaskFilter {
   dueDateTo?: string;
   searchText?: string;
 }
+
+// Export/Import data structure
+export interface ExportData {
+  version: string;
+  exportedAt: string;
+  projects: Project[];
+  tasks: Task[];
+  labels: Label[];
+  dependencies: Dependency[];
+  taskLabels: { taskId: string; labelId: string }[];
+}
+
+export interface ImportResult {
+  success: boolean;
+  imported?: {
+    projects: number;
+    tasks: number;
+    labels: number;
+    dependencies: number;
+  };
+  error?: string;
+}

@@ -1,0 +1,3 @@
+{
+  "config.defaultView": "The view displayed when opening Task Manager. Choose from Todo (simple list), Kanban (drag-and-drop board), or Gantt (timeline chart)."
+}

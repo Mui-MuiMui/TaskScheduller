@@ -29,3 +29,17 @@ export {
 } from './select';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { Textarea } from './textarea';
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+} from './dropdown-menu';

@@ -36,6 +36,10 @@ const config: Config = {
           DEFAULT: 'var(--vscode-editor-background)',
           foreground: 'var(--vscode-editor-foreground)',
         },
+        popover: {
+          DEFAULT: 'var(--vscode-menu-background, var(--vscode-editor-background))',
+          foreground: 'var(--vscode-menu-foreground, var(--vscode-editor-foreground))',
+        },
       },
       borderRadius: {
         lg: '6px',

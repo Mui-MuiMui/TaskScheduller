@@ -2,6 +2,7 @@ import type {
   Task,
   Label,
   Dependency,
+  Project,
   CreateTaskDto,
   UpdateTaskDto,
   CreateLabelDto,
@@ -29,6 +30,7 @@ export type ExtensionToWebviewMessage =
   | LabelCreatedMessage
   | DependencyCreatedMessage
   | DependencyDeletedMessage
+  | DataImportedMessage
   | ErrorMessage
   | ConfigChangedMessage;
 
@@ -38,6 +40,7 @@ export interface TasksLoadedMessage extends BaseMessage {
     tasks: Task[];
     labels: Label[];
     dependencies: Dependency[];
+    projects: Project[];
   };
 }
 
@@ -90,6 +93,21 @@ export interface ConfigChangedMessage extends BaseMessage {
   payload: {
     locale: string;
     theme: 'light' | 'dark' | 'high-contrast';
+    defaultView: 'todo' | 'kanban' | 'gantt';
+  };
+}
+
+export interface DataImportedMessage extends BaseMessage {
+  type: 'DATA_IMPORTED';
+  payload: {
+    success: boolean;
+    imported?: {
+      projects: number;
+      tasks: number;
+      labels: number;
+      dependencies: number;
+    };
+    error?: string;
   };
 }
 
@@ -110,6 +128,7 @@ export type WebviewToExtensionMessage =
   | CreateDependencyRequest
   | DeleteDependencyRequest
   | ExportDataRequest
+  | ImportDataRequest
   | WebviewReadyMessage;
 
 export interface LoadTasksRequest extends BaseMessage {
@@ -181,7 +200,12 @@ export interface ExportDataRequest extends BaseMessage {
   type: 'EXPORT_DATA';
   payload: {
     format: 'json' | 'csv' | 'markdown';
+    projectId?: string; // undefined = all data
   };
+}
+
+export interface ImportDataRequest extends BaseMessage {
+  type: 'IMPORT_DATA';
 }
 
 export interface WebviewReadyMessage extends BaseMessage {

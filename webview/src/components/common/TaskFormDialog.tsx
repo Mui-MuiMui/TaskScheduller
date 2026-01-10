@@ -29,10 +29,12 @@ interface TaskFormDialogProps {
 
 export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps) {
   const { t } = useI18n();
-  const { tasks, dependencies, createTask, updateTaskApi, createDependency, deleteDependency } = useTaskStore();
+  const { tasks, dependencies, projects, currentProjectId, createTask, updateTaskApi, createDependency, deleteDependency } = useTaskStore();
   const isEditMode = !!task;
+  const showProjectSelect = !isEditMode && currentProjectId === null;
 
   const [formData, setFormData] = useState<CreateTaskDto>({
+    projectId: undefined,
     title: '',
     description: '',
     status: 'todo',
@@ -78,6 +80,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
   useEffect(() => {
     if (task) {
       setFormData({
+        projectId: task.projectId || undefined,
         title: task.title,
         description: task.description || '',
         status: task.status,
@@ -90,6 +93,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
       });
     } else {
       setFormData({
+        projectId: undefined,
         title: '',
         description: '',
         status: 'todo',
@@ -156,6 +160,34 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Project (only shown in All Tasks view when creating new task) */}
+          {showProjectSelect && projects.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium">{t('task.project')} *</label>
+              <Select
+                value={formData.projectId || ''}
+                onValueChange={(value) => setFormData({ ...formData, projectId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('task.selectProject')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        {project.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Title */}
           <div className="space-y-1">
             <label className="text-xs font-medium">{t('task.title')} *</label>
@@ -163,7 +195,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder={t('task.title')}
-              autoFocus
+              autoFocus={!showProjectSelect}
             />
           </div>
 
@@ -386,7 +418,10 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('action.cancel')}
             </Button>
-            <Button type="submit" disabled={!formData.title.trim()}>
+            <Button
+              type="submit"
+              disabled={!formData.title.trim() || (showProjectSelect && !formData.projectId)}
+            >
               {isEditMode ? t('action.save') : t('action.create')}
             </Button>
           </DialogFooter>

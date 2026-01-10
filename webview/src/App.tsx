@@ -1,18 +1,44 @@
 import { useEffect, useState } from 'react';
 import { useTaskStore, initializeMessageHandler } from '@/stores/taskStore';
-import { Tabs, TabsList, TabsTrigger, TabsContent, Checkbox, Label } from '@/components/ui';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Checkbox,
+  Label,
+  Button,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/ui';
 import { TodoView } from '@/components/todo/TodoView';
 import { KanbanView } from '@/components/kanban/KanbanView';
 import { GanttView } from '@/components/gantt/GanttView';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
-import { ListTodo, Columns3, GanttChart, Plus } from 'lucide-react';
-import { Button } from '@/components/ui';
+import {
+  ListTodo,
+  Columns3,
+  GanttChart,
+  Plus,
+  MoreVertical,
+  Download,
+  Upload,
+  FileJson,
+  FileSpreadsheet,
+  FileText,
+} from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ViewType } from '@/types';
 
 function App() {
   const { t } = useI18n();
-  const { currentView, setCurrentView, isLoading, showCompletedTasks, setShowCompletedTasks } = useTaskStore();
+  const { currentView, setCurrentView, isLoading, showCompletedTasks, setShowCompletedTasks, exportData, importData } = useTaskStore();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -77,6 +103,41 @@ function App() {
               <Plus className="h-5 w-5" />
               <span className="hidden sm:inline ml-1">{t('action.newTask')}</span>
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Download className="h-4 w-4 mr-2" />
+                    {t('action.export')}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => exportData('json')}>
+                      <FileJson className="h-4 w-4 mr-2" />
+                      JSON
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportData('csv')}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportData('markdown')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Markdown
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => importData()}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  {t('action.import')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

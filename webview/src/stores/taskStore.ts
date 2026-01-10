@@ -3,6 +3,7 @@ import type {
   Task,
   Label,
   Dependency,
+  Project,
   ViewType,
   CreateTaskDto,
   UpdateTaskDto,
@@ -15,6 +16,7 @@ interface TaskState {
   tasks: Task[];
   labels: Label[];
   dependencies: Dependency[];
+  projects: Project[];
 
   // UI State
   currentView: ViewType;
@@ -32,6 +34,7 @@ interface TaskState {
   setTasks: (tasks: Task[]) => void;
   setLabels: (labels: Label[]) => void;
   setDependencies: (dependencies: Dependency[]) => void;
+  setProjects: (projects: Project[]) => void;
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
   removeTask: (taskId: string) => void;
@@ -56,6 +59,8 @@ interface TaskState {
   deleteLabel: (labelId: string) => void;
   createDependency: (predecessorId: string, successorId: string) => void;
   deleteDependency: (dependencyId: string) => void;
+  exportData: (format: 'json' | 'csv' | 'markdown') => void;
+  importData: () => void;
 
   // Selectors
   getTasksByStatus: (status: TaskStatus) => Task[];
@@ -67,6 +72,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   labels: [],
   dependencies: [],
+  projects: [],
   currentView: 'kanban',
   selectedTaskId: null,
   isLoading: true,
@@ -80,6 +86,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   setTasks: (tasks) => set({ tasks }),
   setLabels: (labels) => set({ labels }),
   setDependencies: (dependencies) => set({ dependencies }),
+  setProjects: (projects) => set({ projects }),
 
   addTask: (task) => set((state) => ({
     tasks: [...state.tasks, task]
@@ -148,6 +155,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     postMessage({ type: 'DELETE_DEPENDENCY', payload: { dependencyId } });
   },
 
+  exportData: (format) => {
+    postMessage({ type: 'EXPORT_DATA', payload: { format } });
+  },
+
+  importData: () => {
+    postMessage({ type: 'IMPORT_DATA' });
+  },
+
   // Selectors
   getTasksByStatus: (status) => {
     return get().tasks.filter((t) => t.status === status).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -165,14 +180,15 @@ export function initializeMessageHandler() {
 
   // Listen for messages from extension
   return onMessage((message) => {
-    const { setTasks, setLabels, setDependencies, addTask, updateTask, removeTask, setLoading, setError, setConfig } = useTaskStore.getState();
+    const { setTasks, setLabels, setDependencies, setProjects, addTask, updateTask, removeTask, setLoading, setError, setConfig } = useTaskStore.getState();
 
     switch (message.type) {
       case 'TASKS_LOADED':
-        const tasksPayload = message as { payload: { tasks: Task[]; labels: Label[]; dependencies: Dependency[] } };
+        const tasksPayload = message as { payload: { tasks: Task[]; labels: Label[]; dependencies: Dependency[]; projects: Project[] } };
         setTasks(tasksPayload.payload.tasks);
         setLabels(tasksPayload.payload.labels);
         setDependencies(tasksPayload.payload.dependencies);
+        setProjects(tasksPayload.payload.projects);
         setLoading(false);
         break;
 
@@ -213,8 +229,12 @@ export function initializeMessageHandler() {
         break;
 
       case 'CONFIG_CHANGED':
-        const configPayload = message as { payload: { locale: string; theme: 'light' | 'dark' | 'high-contrast' } };
+        const configPayload = message as { payload: { locale: string; theme: 'light' | 'dark' | 'high-contrast'; defaultView: ViewType } };
         setConfig(configPayload.payload);
+        // 初回読み込み時（isLoadingがtrue）のみdefaultViewを適用
+        if (useTaskStore.getState().isLoading && configPayload.payload.defaultView) {
+          useTaskStore.setState({ currentView: configPayload.payload.defaultView });
+        }
         break;
 
       case 'ERROR':

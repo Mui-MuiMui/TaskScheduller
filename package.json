@@ -101,11 +101,6 @@
             "gantt"
           ],
           "description": "%config.defaultView%"
-        },
-        "taskScheduller.autoSave": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.autoSave%"
         }
       }
     }

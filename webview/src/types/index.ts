@@ -9,7 +9,19 @@ export type DependencyType =
   | 'finish_to_finish'
   | 'start_to_finish';
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  taskCount?: number;
+}
+
 export interface Task {
+  projectId: string | null;
   id: string;
   title: string;
   description: string | null;
@@ -46,6 +58,7 @@ export interface Dependency {
 }
 
 export interface CreateTaskDto {
+  projectId?: string;
   title: string;
   description?: string;
   status?: TaskStatus;

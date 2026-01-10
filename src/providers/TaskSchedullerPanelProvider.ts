@@ -12,6 +12,7 @@ import type {
   LabelCreatedMessage,
   DependencyCreatedMessage,
   DependencyDeletedMessage,
+  DataImportedMessage,
   ErrorMessage,
 } from '../models/messages';
 
@@ -186,6 +187,10 @@ export class TaskSchedullerPanelProvider {
           await this._exportData(message.payload.format);
           break;
 
+        case 'IMPORT_DATA':
+          await this._importData(message.id);
+          break;
+
         default:
           console.warn('Unknown message type:', (message as { type: string }).type);
       }
@@ -206,6 +211,9 @@ export class TaskSchedullerPanelProvider {
   }
 
   private _sendConfig(): void {
+    const config = vscode.workspace.getConfiguration('taskScheduller');
+    const defaultView = config.get<'todo' | 'kanban' | 'gantt'>('defaultView', 'kanban');
+
     this._postMessage({
       id: crypto.randomUUID(),
       timestamp: Date.now(),
@@ -213,6 +221,7 @@ export class TaskSchedullerPanelProvider {
       payload: {
         locale: vscode.env.language,
         theme: this._getTheme(),
+        defaultView,
       },
     });
   }
@@ -239,12 +248,13 @@ export class TaskSchedullerPanelProvider {
     const tasks = this._taskService.getAllTasks(filter);
     const labels = this._taskService.getAllLabels();
     const dependencies = this._taskService.getAllDependencies();
+    const projects = this._taskService.getAllProjects();
 
     const message: TasksLoadedMessage = {
       id: requestId,
       timestamp: Date.now(),
       type: 'TASKS_LOADED',
-      payload: { tasks, labels, dependencies },
+      payload: { tasks, labels, dependencies, projects },
     };
     this._postMessage(message);
   }
@@ -258,9 +268,10 @@ export class TaskSchedullerPanelProvider {
     // predecessorIdsを取り出す
     const { predecessorIds, ...taskPayload } = payload as typeof payload & { predecessorIds?: string[] };
 
-    // 現在のプロジェクトIDを追加
-    const taskData = this._currentProjectId
-      ? { ...taskPayload, projectId: this._currentProjectId }
+    // ペイロードにprojectIdがあればそれを使用、なければ現在のプロジェクトIDを使用
+    const projectId = taskPayload.projectId || this._currentProjectId;
+    const taskData = projectId
+      ? { ...taskPayload, projectId }
       : taskPayload;
     const task = this._taskService.createTask(taskData);
 
@@ -276,7 +287,10 @@ export class TaskSchedullerPanelProvider {
     // 先行タスクの依存関係を作成し、各依存関係を個別に通知
     if (predecessorIds && predecessorIds.length > 0) {
       for (const predecessorId of predecessorIds) {
-        const dependency = this._taskService.createDependency(predecessorId, task.id);
+        const dependency = this._taskService.createDependency({
+          predecessorId: predecessorId,
+          successorId: task.id,
+        });
         // 依存関係作成を個別に通知
         const depMessage: DependencyCreatedMessage = {
           id: crypto.randomUUID(),
@@ -432,28 +446,91 @@ export class TaskSchedullerPanelProvider {
 
   private async _exportData(format: 'json' | 'csv' | 'markdown'): Promise<void> {
     let content: string;
-    let language: string;
+    let defaultExt: string;
+    const filters: { [key: string]: string[] } = {};
 
     switch (format) {
       case 'json':
         content = this._taskService.exportToJson();
-        language = 'json';
+        defaultExt = 'json';
+        filters['JSON'] = ['json'];
         break;
       case 'csv':
         content = this._taskService.exportToCsv();
-        language = 'csv';
+        defaultExt = 'csv';
+        filters['CSV'] = ['csv'];
         break;
       case 'markdown':
         content = this._taskService.exportToMarkdown();
-        language = 'markdown';
+        defaultExt = 'md';
+        filters['Markdown'] = ['md'];
         break;
     }
 
-    const doc = await vscode.workspace.openTextDocument({
-      content,
-      language,
+    // ローカル時間でタイムスタンプを生成
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+    const defaultFilename = `taskscheduller_export_${timestamp}.${defaultExt}`;
+
+    const uri = await vscode.window.showSaveDialog({
+      filters,
+      defaultUri: vscode.Uri.file(defaultFilename),
+      title: vscode.l10n.t('dialog.exportData'),
     });
-    await vscode.window.showTextDocument(doc);
+
+    if (uri) {
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf-8'));
+      vscode.window.showInformationMessage(vscode.l10n.t('message.dataExported'));
+    }
+  }
+
+  private async _importData(requestId: string): Promise<void> {
+    const files = await vscode.window.showOpenDialog({
+      filters: { 'JSON': ['json'] },
+      canSelectMany: false,
+      title: vscode.l10n.t('dialog.importData'),
+    });
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    try {
+      const content = await vscode.workspace.fs.readFile(files[0]);
+      const jsonString = Buffer.from(content).toString('utf-8');
+      const result = this._taskService.importFromJson(jsonString);
+
+      const message: DataImportedMessage = {
+        id: requestId,
+        timestamp: Date.now(),
+        type: 'DATA_IMPORTED',
+        payload: result,
+      };
+      this._postMessage(message);
+
+      if (result.success) {
+        vscode.window.showInformationMessage(
+          vscode.l10n.t(
+            'message.dataImported',
+            result.imported?.projects ?? 0,
+            result.imported?.tasks ?? 0,
+            result.imported?.labels ?? 0,
+            result.imported?.dependencies ?? 0
+          )
+        );
+        // Reload tasks to reflect imported data
+        await this._loadTasks(crypto.randomUUID());
+        this._refreshSidebar();
+      } else {
+        vscode.window.showErrorMessage(
+          vscode.l10n.t('message.importFailed', result.error ?? 'Unknown error')
+        );
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t('message.importFailed', (error as Error).message)
+      );
+    }
   }
 
   private _postMessage(message: ExtensionToWebviewMessage): void {

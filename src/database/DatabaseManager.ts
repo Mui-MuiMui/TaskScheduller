@@ -8,6 +8,7 @@ export class DatabaseManager {
   private _db: Database | null = null;
   private dbPath: string;
   private wasmPath: string;
+  private _inTransaction: boolean = false;
 
   // Expose database for repositories
   public get db(): Database {
@@ -18,7 +19,7 @@ export class DatabaseManager {
   }
 
   constructor(private context: vscode.ExtensionContext) {
-    this._dbPath = path.join(context.globalStorageUri.fsPath, 'taskscheduller.db');
+    this.dbPath = path.join(context.globalStorageUri.fsPath, 'taskscheduller.db');
     this.wasmPath = path.join(
       context.extensionUri.fsPath,
       'dist',
@@ -28,7 +29,7 @@ export class DatabaseManager {
 
   async initialize(): Promise<void> {
     // Ensure storage directory exists
-    const storageDir = path.dirname(this._dbPath);
+    const storageDir = path.dirname(this.dbPath);
     if (!fs.existsSync(storageDir)) {
       fs.mkdirSync(storageDir, { recursive: true });
     }
@@ -39,8 +40,8 @@ export class DatabaseManager {
     });
 
     // Load existing database or create new one
-    if (fs.existsSync(this._dbPath)) {
-      const buffer = fs.readFileSync(this._dbPath);
+    if (fs.existsSync(this.dbPath)) {
+      const buffer = fs.readFileSync(this.dbPath);
       this._db = new SQL.Database(buffer);
       console.log('Loaded existing database');
     } else {
@@ -98,7 +99,10 @@ export class DatabaseManager {
       throw new Error('Database not initialized');
     }
     this._db.run(sql, params as (string | number | null | Uint8Array)[]);
-    this.save();
+    // Don't save during transaction - will save on commit
+    if (!this._inTransaction) {
+      this.save();
+    }
   }
 
   query<T extends Record<string, unknown>>(sql: string, params: unknown[] = []): T[] {
@@ -126,14 +130,14 @@ export class DatabaseManager {
       return;
     }
 
-    const dir = path.dirname(this._dbPath);
+    const dir = path.dirname(this.dbPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
 
     const data = this._db.export();
     const buffer = Buffer.from(data);
-    fs.writeFileSync(this._dbPath, buffer);
+    fs.writeFileSync(this.dbPath, buffer);
   }
 
   close(): void {
@@ -148,14 +152,17 @@ export class DatabaseManager {
     if (!this._db) {
       throw new Error('Database not initialized');
     }
+    this._inTransaction = true;
     this._db.run('BEGIN TRANSACTION');
     try {
       const result = fn();
       this._db.run('COMMIT');
+      this._inTransaction = false;
       this.save();
       return result;
     } catch (error) {
       this._db.run('ROLLBACK');
+      this._inTransaction = false;
       throw error;
     }
   }
