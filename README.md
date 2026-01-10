@@ -2,24 +2,36 @@
 
 [日本語版 README はこちら](README_ja.md)
 
-A VSCode extension for task management with Todo list, Kanban board, and Gantt chart views. All views share the same data and stay synchronized.
+A VSCode extension for task management with Todo list, Kanban board, and Gantt chart views.
+
 
 ## Features
 
 ### Three Integrated Views
 
-- **Todo List**: Simple task list with checkboxes and filtering
-- **Kanban Board**: Drag-and-drop task management across columns (Todo / In Progress / On Hold / Done)
-- **Gantt Chart**: Timeline view with dependency arrows and progress visualization
+**Todo List**
+Task list management
+![ToDo_Preview1](./doc/img/ToDo_Preview1.gif)
+![ToDo_Preview2](./doc/img/ToDo_Preview2.gif)
+
+
+**Kanban Board**
+Task management with Kanban board
+![Kanban_Preview1](./doc/img/Kanban_Preview1.gif)
+
+
+**Gantt Chart**
+Timeline view, dependency arrows, progress visualization
+![Gantt_Preview1](./doc/img/Gantt_Preview1.gif)
+
 
 ### Task Management
-
 - Create, edit, and delete tasks
 - Set priority levels (Low / Medium / High / Urgent)
 - Track progress (0-100%)
-- Assign start dates and due dates with automatic validation
-- Assign tasks to team members
-- Estimate hours for tasks
+- Assign start dates and due dates (with automatic validation)
+- Assign tasks to team members (setting only)
+- Estimate hours for tasks (setting only)
 
 ### Dependencies
 
@@ -38,9 +50,10 @@ A VSCode extension for task management with Todo list, Kanban board, and Gantt c
 - English and Japanese language support
 - Automatically detects VSCode language settings
 
-## Screenshots
+### Export / Import
 
-(Coming soon)
+- Export to JSON and CSV formats
+- Import from exported JSON format
 
 ## Installation
 
@@ -76,7 +89,7 @@ npm run package
 3. Click "+" to add a new task
 4. Switch between Todo, Kanban, and Gantt views using the tabs
 
-### Keyboard Shortcuts
+### Operations
 
 - Double-click a task to edit
 - Drag tasks in Kanban to change status
@@ -111,4 +124,6 @@ npm run lint
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+- MIT License - see [LICENSE](./LICENSE) for details.
+- For library license information, see [LIBRARIES.md](./LIBRARIES.md).
+(Please refer to each library's page for the latest license information. The information may not be up to date.)
