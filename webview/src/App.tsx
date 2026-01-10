@@ -31,7 +31,6 @@ import {
   Upload,
   FileJson,
   FileSpreadsheet,
-  FileText,
 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ViewType } from '@/types';
@@ -124,10 +123,6 @@ function App() {
                     <DropdownMenuItem onClick={() => exportData('csv')}>
                       <FileSpreadsheet className="h-4 w-4 mr-2" />
                       CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => exportData('markdown')}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Markdown
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>

@@ -59,7 +59,7 @@ interface TaskState {
   deleteLabel: (labelId: string) => void;
   createDependency: (predecessorId: string, successorId: string) => void;
   deleteDependency: (dependencyId: string) => void;
-  exportData: (format: 'json' | 'csv' | 'markdown') => void;
+  exportData: (format: 'json' | 'csv') => void;
   importData: () => void;
 
   // Selectors

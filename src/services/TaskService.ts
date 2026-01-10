@@ -353,8 +353,12 @@ export class TaskService {
 
   exportToCsv(): string {
     const tasks = this.getAllTasks();
+    const projects = this.projectRepo.findAll();
+    const projectMap = new Map(projects.map(p => [p.id, p.name]));
+
     const headers = [
       'ID',
+      'Project',
       'Title',
       'Description',
       'Status',
@@ -370,6 +374,7 @@ export class TaskService {
 
     const rows = tasks.map((task) => [
       task.id,
+      `"${(projectMap.get(task.projectId) || '').replace(/"/g, '""')}"`,
       `"${(task.title || '').replace(/"/g, '""')}"`,
       `"${(task.description || '').replace(/"/g, '""')}"`,
       task.status,
@@ -384,49 +389,5 @@ export class TaskService {
     ]);
 
     return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-  }
-
-  exportToMarkdown(): string {
-    const tasks = this.getAllTasks();
-    const lines: string[] = ['# Task List', '', `Exported: ${new Date().toISOString()}`, ''];
-
-    const statusGroups: Record<TaskStatus, Task[]> = {
-      todo: [],
-      in_progress: [],
-      done: [],
-    };
-
-    for (const task of tasks) {
-      statusGroups[task.status].push(task);
-    }
-
-    const statusLabels: Record<TaskStatus, string> = {
-      todo: 'To Do',
-      in_progress: 'In Progress',
-      done: 'Done',
-    };
-
-    for (const [status, statusTasks] of Object.entries(statusGroups)) {
-      if (statusTasks.length === 0) continue;
-
-      lines.push(`## ${statusLabels[status as TaskStatus]}`, '');
-      for (const task of statusTasks) {
-        const checkbox = status === 'done' ? '[x]' : '[ ]';
-        const priority = '●'.repeat(task.priority);
-        const labels =
-          task.labels && task.labels.length > 0
-            ? ` [${task.labels.map((l) => l.name).join(', ')}]`
-            : '';
-        const dueDate = task.dueDate ? ` (Due: ${task.dueDate})` : '';
-
-        lines.push(`- ${checkbox} ${priority} **${task.title}**${labels}${dueDate}`);
-        if (task.description) {
-          lines.push(`  > ${task.description}`);
-        }
-      }
-      lines.push('');
-    }
-
-    return lines.join('\n');
   }
 }

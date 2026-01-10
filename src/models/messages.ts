@@ -199,7 +199,7 @@ export interface DeleteDependencyRequest extends BaseMessage {
 export interface ExportDataRequest extends BaseMessage {
   type: 'EXPORT_DATA';
   payload: {
-    format: 'json' | 'csv' | 'markdown';
+    format: 'json' | 'csv';
     projectId?: string; // undefined = all data
   };
 }

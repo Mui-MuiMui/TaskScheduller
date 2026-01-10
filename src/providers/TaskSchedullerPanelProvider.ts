@@ -446,7 +446,7 @@ export class TaskSchedullerPanelProvider {
     }
   }
 
-  private async _exportData(format: 'json' | 'csv' | 'markdown'): Promise<void> {
+  private async _exportData(format: 'json' | 'csv'): Promise<void> {
     let content: string;
     let defaultExt: string;
     const filters: { [key: string]: string[] } = {};
@@ -461,11 +461,6 @@ export class TaskSchedullerPanelProvider {
         content = this._taskService.exportToCsv();
         defaultExt = 'csv';
         filters['CSV'] = ['csv'];
-        break;
-      case 'markdown':
-        content = this._taskService.exportToMarkdown();
-        defaultExt = 'md';
-        filters['Markdown'] = ['md'];
         break;
     }
 
