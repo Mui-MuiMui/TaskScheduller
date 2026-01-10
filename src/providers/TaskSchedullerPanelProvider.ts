@@ -15,6 +15,7 @@ import type {
   DataImportedMessage,
   ErrorMessage,
 } from '../models/messages';
+import type { TaskFilter } from '../models/types';
 
 export class TaskSchedullerPanelProvider {
   public static readonly viewType = 'taskScheduller.mainPanel';
@@ -243,7 +244,7 @@ export class TaskSchedullerPanelProvider {
 
   private async _loadTasks(
     requestId: string,
-    filter?: WebviewToExtensionMessage extends { payload?: { filter?: infer F } } ? F : never
+    filter?: TaskFilter
   ): Promise<void> {
     const tasks = this._taskService.getAllTasks(filter);
     const labels = this._taskService.getAllLabels();
@@ -384,8 +385,9 @@ export class TaskSchedullerPanelProvider {
       : never
   ): Promise<void> {
     this._taskService.reorderTasks(taskIds, status);
-    // Reload tasks after reorder
-    await this._loadTasks(requestId);
+    // Reload tasks after reorder with current project filter
+    const filter = this._currentProjectId ? { projectId: this._currentProjectId } : undefined;
+    await this._loadTasks(requestId, filter);
   }
 
   private async _createLabel(
