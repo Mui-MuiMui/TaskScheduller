@@ -264,13 +264,7 @@ export class TaskSchedullerPanelProvider {
       : taskPayload;
     const task = this._taskService.createTask(taskData);
 
-    // 先行タスクの依存関係を作成
-    if (predecessorIds && predecessorIds.length > 0) {
-      for (const predecessorId of predecessorIds) {
-        this._taskService.createDependency(predecessorId, task.id);
-      }
-    }
-
+    // まずタスク作成を通知
     const message: TaskCreatedMessage = {
       id: requestId,
       timestamp: Date.now(),
@@ -279,9 +273,19 @@ export class TaskSchedullerPanelProvider {
     };
     this._postMessage(message);
 
-    // 依存関係が作成された場合は全データをリロード
+    // 先行タスクの依存関係を作成し、各依存関係を個別に通知
     if (predecessorIds && predecessorIds.length > 0) {
-      this._loadTasks(crypto.randomUUID(), this._currentProjectId ? { projectId: this._currentProjectId } : undefined);
+      for (const predecessorId of predecessorIds) {
+        const dependency = this._taskService.createDependency(predecessorId, task.id);
+        // 依存関係作成を個別に通知
+        const depMessage: DependencyCreatedMessage = {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'DEPENDENCY_CREATED',
+          payload: { dependency },
+        };
+        this._postMessage(depMessage);
+      }
     }
 
     this._refreshSidebar();

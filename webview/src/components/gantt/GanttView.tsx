@@ -69,10 +69,8 @@ export function GanttView() {
   }, []);
 
   // Filter tasks with dates
-  const tasksWithDates = useMemo(() => {
-    const filtered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
-    return filtered.filter((task) => task.startDate || task.dueDate);
-  }, [tasks, showCompletedTasks]);
+  const filteredByCompletion = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+  const tasksWithDates = filteredByCompletion.filter((task) => task.startDate || task.dueDate);
 
   // Fixed cell width for all view modes
   const cellWidth = 40;
@@ -380,148 +378,143 @@ export function GanttView() {
   }, []);
 
   // Get task index in the displayed list
-  const taskIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    tasksWithDates.forEach((task, index) => {
-      map.set(task.id, index);
-    });
-    return map;
-  }, [tasksWithDates]);
+  const taskIndexMap = new Map<string, number>();
+  tasksWithDates.forEach((task, index) => {
+    taskIndexMap.set(task.id, index);
+  });
 
   // Calculate dependency arrow paths
-  const dependencyArrows = useMemo(() => {
-    const rowHeight = 56; // Height of each task row
-    const barHeight = 28; // Height of the task bar
-    const verticalPadding = (rowHeight - barHeight) / 2;
+  const rowHeight = 56; // Height of each task row
+  const barHeight = 28; // Height of the task bar
+  const verticalPadding = (rowHeight - barHeight) / 2;
 
-    return dependencies
-      .filter(dep => {
-        // Only show dependencies where both tasks are visible
-        const predIndex = taskIndexMap.get(dep.predecessorId);
-        const succIndex = taskIndexMap.get(dep.successorId);
-        return predIndex !== undefined && succIndex !== undefined;
-      })
-      .map(dep => {
-        const predTask = tasksWithDates.find(t => t.id === dep.predecessorId);
-        const succTask = tasksWithDates.find(t => t.id === dep.successorId);
+  const dependencyArrows = dependencies
+    .filter(dep => {
+      // Only show dependencies where both tasks are visible
+      const predIndex = taskIndexMap.get(dep.predecessorId);
+      const succIndex = taskIndexMap.get(dep.successorId);
+      return predIndex !== undefined && succIndex !== undefined;
+    })
+    .map(dep => {
+      const predTask = tasksWithDates.find(t => t.id === dep.predecessorId);
+      const succTask = tasksWithDates.find(t => t.id === dep.successorId);
 
-        if (!predTask || !succTask) return null;
+      if (!predTask || !succTask) return null;
 
-        const predPos = getTaskPosition(predTask);
-        const succPos = getTaskPosition(succTask);
+      const predPos = getTaskPosition(predTask);
+      const succPos = getTaskPosition(succTask);
 
-        if (!predPos || !succPos) return null;
+      if (!predPos || !succPos) return null;
 
-        const predIndex = taskIndexMap.get(dep.predecessorId)!;
-        const succIndex = taskIndexMap.get(dep.successorId)!;
+      const predIndex = taskIndexMap.get(dep.predecessorId)!;
+      const succIndex = taskIndexMap.get(dep.successorId)!;
 
-        // Calculate start point (right side of predecessor bar)
-        const startX = predPos.leftPx + predPos.widthPx;
-        const startY = predIndex * rowHeight + rowHeight / 2;
+      // Calculate start point (right side of predecessor bar)
+      const startX = predPos.leftPx + predPos.widthPx;
+      const startY = predIndex * rowHeight + rowHeight / 2;
 
-        // Calculate end point (left side of successor bar)
-        const endX = succPos.leftPx;
-        const endY = succIndex * rowHeight + rowHeight / 2;
+      // Calculate end point (left side of successor bar)
+      const endX = succPos.leftPx;
+      const endY = succIndex * rowHeight + rowHeight / 2;
 
-        // Check if tasks overlap horizontally (predecessor ends after successor starts)
-        const hasOverlap = startX > endX - 20;
-        const goingDown = succIndex > predIndex;
-        const sameRow = succIndex === predIndex;
+      // Check if tasks overlap horizontally (predecessor ends after successor starts)
+      const hasOverlap = startX > endX - 20;
+      const goingDown = succIndex > predIndex;
+      const sameRow = succIndex === predIndex;
 
-        let path: string;
+      let path: string;
 
-        if (sameRow) {
-          // Same row - need to go around
-          if (hasOverlap) {
-            // Go below the bar
-            const bottomY = startY + barHeight / 2 + 8;
-            path = `M ${startX} ${startY}
-                    L ${startX + 8} ${startY}
-                    L ${startX + 8} ${bottomY}
-                    L ${endX - 8} ${bottomY}
-                    L ${endX - 8} ${endY}`;
-          } else {
-            // Simple horizontal line
-            path = `M ${startX} ${startY} L ${endX - 8} ${endY}`;
-          }
-        } else if (hasOverlap) {
-          // Tasks overlap horizontally - route around successor bar
-          // Connect to successor from far left to avoid overlapping with the bar
-          const cornerRadius = 6;
-          const horizontalOffset = 12;
-          // Connect to a point well left of the successor bar
-          const succConnectX = Math.min(endX - 30, startX - 10);
-
-          if (goingDown) {
-            // Route: right -> down -> left (to far left of successor) -> down -> right to successor
-            const midY = predIndex * rowHeight + rowHeight - verticalPadding + 8;
-
-            path = `M ${startX} ${startY}
-                    L ${startX + horizontalOffset} ${startY}
-                    Q ${startX + horizontalOffset + cornerRadius} ${startY} ${startX + horizontalOffset + cornerRadius} ${startY + cornerRadius}
-                    L ${startX + horizontalOffset + cornerRadius} ${midY}
-                    L ${succConnectX} ${midY}
-                    Q ${succConnectX - cornerRadius} ${midY} ${succConnectX - cornerRadius} ${midY + cornerRadius}
-                    L ${succConnectX - cornerRadius} ${endY - cornerRadius}
-                    Q ${succConnectX - cornerRadius} ${endY} ${succConnectX} ${endY}
-                    L ${endX - 8} ${endY}`;
-          } else {
-            // Going up - route above
-            const midY = predIndex * rowHeight + verticalPadding - 8;
-
-            path = `M ${startX} ${startY}
-                    L ${startX + horizontalOffset} ${startY}
-                    Q ${startX + horizontalOffset + cornerRadius} ${startY} ${startX + horizontalOffset + cornerRadius} ${startY - cornerRadius}
-                    L ${startX + horizontalOffset + cornerRadius} ${midY}
-                    L ${succConnectX} ${midY}
-                    Q ${succConnectX - cornerRadius} ${midY} ${succConnectX - cornerRadius} ${midY - cornerRadius}
-                    L ${succConnectX - cornerRadius} ${endY + cornerRadius}
-                    Q ${succConnectX - cornerRadius} ${endY} ${succConnectX} ${endY}
-                    L ${endX - 8} ${endY}`;
-          }
+      if (sameRow) {
+        // Same row - need to go around
+        if (hasOverlap) {
+          // Go below the bar
+          const bottomY = startY + barHeight / 2 + 8;
+          path = `M ${startX} ${startY}
+                  L ${startX + 8} ${startY}
+                  L ${startX + 8} ${bottomY}
+                  L ${endX - 8} ${bottomY}
+                  L ${endX - 8} ${endY}`;
         } else {
-          // No overlap - simple L-shape: right from predecessor, then horizontal to successor
-          const cornerRadius = 6;
-          const horizontalOffset = 10;
-          const midX = startX + horizontalOffset + cornerRadius;
-
-          if (goingDown) {
-            // Go right, down to successor row level, then horizontal to successor
-            path = `M ${startX} ${startY}
-                    L ${startX + horizontalOffset} ${startY}
-                    Q ${midX} ${startY} ${midX} ${startY + cornerRadius}
-                    L ${midX} ${endY - cornerRadius}
-                    Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
-                    L ${endX - 8} ${endY}`;
-          } else {
-            // Going up
-            path = `M ${startX} ${startY}
-                    L ${startX + horizontalOffset} ${startY}
-                    Q ${midX} ${startY} ${midX} ${startY - cornerRadius}
-                    L ${midX} ${endY + cornerRadius}
-                    Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
-                    L ${endX - 8} ${endY}`;
-          }
+          // Simple horizontal line
+          path = `M ${startX} ${startY} L ${endX - 8} ${endY}`;
         }
+      } else if (hasOverlap) {
+        // Tasks overlap horizontally - route around successor bar
+        // Connect to successor from far left to avoid overlapping with the bar
+        const cornerRadius = 6;
+        const horizontalOffset = 12;
+        // Connect to a point well left of the successor bar
+        const succConnectX = Math.min(endX - 30, startX - 10);
 
-        return {
-          id: dep.id,
-          path,
-          endX,
-          endY,
-          predecessorId: dep.predecessorId,
-          successorId: dep.successorId,
-        };
-      })
-      .filter(Boolean) as Array<{
-        id: string;
-        path: string;
-        endX: number;
-        endY: number;
-        predecessorId: string;
-        successorId: string;
-      }>;
-  }, [dependencies, tasksWithDates, taskIndexMap, getTaskPosition]);
+        if (goingDown) {
+          // Route: right -> down -> left (to far left of successor) -> down -> right to successor
+          const midY = predIndex * rowHeight + rowHeight - verticalPadding + 8;
+
+          path = `M ${startX} ${startY}
+                  L ${startX + horizontalOffset} ${startY}
+                  Q ${startX + horizontalOffset + cornerRadius} ${startY} ${startX + horizontalOffset + cornerRadius} ${startY + cornerRadius}
+                  L ${startX + horizontalOffset + cornerRadius} ${midY}
+                  L ${succConnectX} ${midY}
+                  Q ${succConnectX - cornerRadius} ${midY} ${succConnectX - cornerRadius} ${midY + cornerRadius}
+                  L ${succConnectX - cornerRadius} ${endY - cornerRadius}
+                  Q ${succConnectX - cornerRadius} ${endY} ${succConnectX} ${endY}
+                  L ${endX - 8} ${endY}`;
+        } else {
+          // Going up - route above
+          const midY = predIndex * rowHeight + verticalPadding - 8;
+
+          path = `M ${startX} ${startY}
+                  L ${startX + horizontalOffset} ${startY}
+                  Q ${startX + horizontalOffset + cornerRadius} ${startY} ${startX + horizontalOffset + cornerRadius} ${startY - cornerRadius}
+                  L ${startX + horizontalOffset + cornerRadius} ${midY}
+                  L ${succConnectX} ${midY}
+                  Q ${succConnectX - cornerRadius} ${midY} ${succConnectX - cornerRadius} ${midY - cornerRadius}
+                  L ${succConnectX - cornerRadius} ${endY + cornerRadius}
+                  Q ${succConnectX - cornerRadius} ${endY} ${succConnectX} ${endY}
+                  L ${endX - 8} ${endY}`;
+        }
+      } else {
+        // No overlap - simple L-shape: right from predecessor, then horizontal to successor
+        const cornerRadius = 6;
+        const horizontalOffset = 10;
+        const midX = startX + horizontalOffset + cornerRadius;
+
+        if (goingDown) {
+          // Go right, down to successor row level, then horizontal to successor
+          path = `M ${startX} ${startY}
+                  L ${startX + horizontalOffset} ${startY}
+                  Q ${midX} ${startY} ${midX} ${startY + cornerRadius}
+                  L ${midX} ${endY - cornerRadius}
+                  Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
+                  L ${endX - 8} ${endY}`;
+        } else {
+          // Going up
+          path = `M ${startX} ${startY}
+                  L ${startX + horizontalOffset} ${startY}
+                  Q ${midX} ${startY} ${midX} ${startY - cornerRadius}
+                  L ${midX} ${endY + cornerRadius}
+                  Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
+                  L ${endX - 8} ${endY}`;
+        }
+      }
+
+      return {
+        id: dep.id,
+        path,
+        endX,
+        endY,
+        predecessorId: dep.predecessorId,
+        successorId: dep.successorId,
+      };
+    })
+    .filter(Boolean) as Array<{
+      id: string;
+      path: string;
+      endX: number;
+      endY: number;
+      predecessorId: string;
+      successorId: string;
+    }>;
 
   if (tasksWithDates.length === 0) {
     return (

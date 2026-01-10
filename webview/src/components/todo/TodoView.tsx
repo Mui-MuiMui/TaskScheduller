@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
@@ -14,17 +14,15 @@ export function TodoView() {
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Filter and sort tasks - memoized
-  const sortedTasks = useMemo(() => {
-    const filtered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
-    const statusOrder = { todo: 0, in_progress: 1, on_hold: 2, done: 3 };
-    return [...filtered].sort((a, b) => {
-      if (statusOrder[a.status] !== statusOrder[b.status]) {
-        return statusOrder[a.status] - statusOrder[b.status];
-      }
-      return a.sortOrder - b.sortOrder;
-    });
-  }, [tasks, showCompletedTasks]);
+  // Filter and sort tasks
+  const filtered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+  const statusOrder: Record<string, number> = { todo: 0, in_progress: 1, on_hold: 2, done: 3 };
+  const sortedTasks = [...filtered].sort((a, b) => {
+    if (statusOrder[a.status] !== statusOrder[b.status]) {
+      return statusOrder[a.status] - statusOrder[b.status];
+    }
+    return a.sortOrder - b.sortOrder;
+  });
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
