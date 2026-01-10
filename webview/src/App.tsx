@@ -38,13 +38,14 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col p-3">
+    <div className="flex h-screen flex-col">
       <Tabs
         value={currentView}
         onValueChange={(value) => setCurrentView(value as ViewType)}
-        className="flex flex-1 flex-col"
+        className="flex flex-1 flex-col min-h-0"
       >
-        <div className="flex items-center justify-between gap-3 mb-3">
+        {/* Fixed Toolbar */}
+        <div className="shrink-0 flex items-center justify-between gap-3 p-3 border-b border-border bg-background">
           <TabsList className="h-10">
             <TabsTrigger value="todo" className="gap-2 px-4 py-2 text-sm">
               <ListTodo className="h-5 w-5" />
@@ -79,15 +80,16 @@ function App() {
           </div>
         </div>
 
-        <TabsContent value="todo" className="flex-1 overflow-auto mt-0">
+        {/* Scrollable Content Area */}
+        <TabsContent value="todo" className="flex-1 min-h-0 mt-0 overflow-hidden">
           <TodoView />
         </TabsContent>
 
-        <TabsContent value="kanban" className="flex-1 overflow-auto mt-0">
+        <TabsContent value="kanban" className="flex-1 min-h-0 mt-0 overflow-hidden p-3">
           <KanbanView />
         </TabsContent>
 
-        <TabsContent value="gantt" className="flex-1 overflow-auto mt-0">
+        <TabsContent value="gantt" className="flex-1 min-h-0 mt-0 overflow-hidden">
           <GanttView />
         </TabsContent>
       </Tabs>

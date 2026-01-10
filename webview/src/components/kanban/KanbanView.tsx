@@ -63,9 +63,9 @@ export function KanbanView() {
   }, []);
 
   return (
-    <>
+    <div className="h-full overflow-x-auto">
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-2 h-full min-h-0">
+        <div className="flex gap-2 h-full min-h-0 min-w-max">
           {KANBAN_COLUMNS.map((column) => {
             // Skip done column if not showing completed tasks
             if (!showCompletedTasks && column.status === 'done') {
@@ -99,6 +99,6 @@ export function KanbanView() {
         onOpenChange={setIsEditDialogOpen}
         task={editingTask}
       />
-    </>
+    </div>
   );
 }

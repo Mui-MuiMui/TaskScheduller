@@ -578,7 +578,7 @@ export function GanttView() {
         <div className="min-w-[600px]">
           {/* Header row */}
           <div className="flex border-b border-border sticky top-0 bg-background z-20">
-            <div className="w-[220px] shrink-0 p-2 border-r border-border text-sm font-medium flex items-center">
+            <div className="w-[220px] shrink-0 p-2 border-r border-border text-sm font-medium flex items-center sticky left-0 bg-background z-10">
               {t('task.task')}
             </div>
             <div className="flex-1 flex">
@@ -684,7 +684,7 @@ export function GanttView() {
                     }
                   }}
                 >
-                  <div className="w-[220px] shrink-0 p-3 border-r border-border flex items-center gap-2">
+                  <div className="w-[220px] shrink-0 p-3 border-r border-border flex items-center gap-2 sticky left-0 bg-background z-[5]">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{task.title}</div>
                       <div className="text-xs text-muted-foreground">

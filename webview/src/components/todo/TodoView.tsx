@@ -55,7 +55,7 @@ export function TodoView() {
   return (
     <div className="h-full overflow-auto">
       <table className="w-full text-base">
-        <thead className="sticky top-0 bg-background border-b border-border">
+        <thead className="sticky top-0 bg-background border-b border-border z-10">
           <tr className="text-left text-sm text-muted-foreground">
             <th className="w-10 p-3"></th>
             <th className="w-10 p-3"></th>
