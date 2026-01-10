@@ -1,3 +1,9 @@
 {
+  "command.openMainView": "Open Task Manager",
+  "command.createTask": "Create New Task",
+  "command.switchToTodo": "Switch to Todo List",
+  "command.switchToKanban": "Switch to Kanban Board",
+  "command.switchToGantt": "Switch to Gantt Chart",
+  "command.openProject": "Open Project",
   "config.defaultView": "The view displayed when opening Task Manager. Choose from Todo (simple list), Kanban (drag-and-drop board), or Gantt (timeline chart)."
 }

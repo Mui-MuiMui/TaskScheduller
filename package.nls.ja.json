@@ -1,3 +1,9 @@
 {
+  "command.openMainView": "タスクマネージャーを開く",
+  "command.createTask": "新しいタスクを作成",
+  "command.switchToTodo": "ToDoリストに切り替え",
+  "command.switchToKanban": "カンバンボードに切り替え",
+  "command.switchToGantt": "ガントチャートに切り替え",
+  "command.openProject": "プロジェクトを開く",
   "config.defaultView": "タスクマネージャーを開いたときに表示するビュー。ToDo（シンプルなリスト）、カンバン（ドラッグ＆ドロップボード）、ガント（タイムラインチャート）から選択できます。"
 }
