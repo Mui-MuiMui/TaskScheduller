@@ -1,7 +1,13 @@
 // Re-export shared types from extension
 // These types mirror the extension's models/types.ts
 
-export type TaskStatus = 'todo' | 'in_progress' | 'on_hold' | 'done';
+// Task Status - dynamic status supporting custom columns
+export type TaskStatus = string;
+
+// Default statuses for type guards
+export const DEFAULT_STATUSES = ['todo', 'in_progress', 'on_hold', 'done'] as const;
+export type DefaultTaskStatus = (typeof DEFAULT_STATUSES)[number];
+
 export type Priority = 1 | 2 | 3 | 4;
 export type DependencyType =
   | 'finish_to_start'
@@ -79,12 +85,62 @@ export interface UpdateTaskDto extends Partial<CreateTaskDto> {
 
 export type ViewType = 'todo' | 'kanban' | 'gantt';
 
-export const KANBAN_COLUMNS: { status: TaskStatus; labelKey: string }[] = [
-  { status: 'todo', labelKey: 'status.todo' },
-  { status: 'in_progress', labelKey: 'status.inProgress' },
-  { status: 'on_hold', labelKey: 'status.onHold' },
-  { status: 'done', labelKey: 'status.done' },
-];
+// KanbanColumn entity
+export interface KanbanColumn {
+  id: string;
+  projectId: string | null; // null = global (all projects), string = project-specific
+  name: string;
+  color: string; // Tailwind color class (e.g., 'bg-blue-500')
+  sortOrder: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateKanbanColumnDto {
+  projectId?: string | null; // null or undefined = global
+  name: string;
+  color: string;
+}
+
+export interface UpdateKanbanColumnDto {
+  name?: string;
+  color?: string;
+  sortOrder?: number;
+}
+
+// Preset colors for kanban columns
+export const COLUMN_PRESET_COLORS = [
+  { id: 'blue', class: 'bg-blue-500', label: 'Blue' },
+  { id: 'yellow', class: 'bg-yellow-500', label: 'Yellow' },
+  { id: 'green', class: 'bg-green-500', label: 'Green' },
+  { id: 'red', class: 'bg-red-500', label: 'Red' },
+  { id: 'purple', class: 'bg-purple-500', label: 'Purple' },
+  { id: 'pink', class: 'bg-pink-500', label: 'Pink' },
+  { id: 'indigo', class: 'bg-indigo-500', label: 'Indigo' },
+  { id: 'cyan', class: 'bg-cyan-500', label: 'Cyan' },
+  { id: 'orange', class: 'bg-orange-500', label: 'Orange' },
+  { id: 'gray', class: 'bg-gray-500', label: 'Gray' },
+] as const;
+
+// Map Tailwind bg-* classes to hex color values (for inline styles)
+export const TAILWIND_COLOR_TO_HEX: Record<string, string> = {
+  'bg-blue-500': '#3b82f6',
+  'bg-yellow-500': '#eab308',
+  'bg-green-500': '#22c55e',
+  'bg-red-500': '#ef4444',
+  'bg-purple-500': '#a855f7',
+  'bg-pink-500': '#ec4899',
+  'bg-indigo-500': '#6366f1',
+  'bg-cyan-500': '#06b6d4',
+  'bg-orange-500': '#f97316',
+  'bg-gray-500': '#6b7280',
+};
+
+// Helper function to get hex color from Tailwind class
+export function getHexColor(tailwindClass: string): string {
+  return TAILWIND_COLOR_TO_HEX[tailwindClass] || '#3b82f6'; // default to blue
+}
 
 export const PRIORITY_LABEL_KEYS: Record<Priority, string> = {
   1: 'priority.low',

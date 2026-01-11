@@ -1,5 +1,9 @@
-// Task Status
-export type TaskStatus = 'todo' | 'in_progress' | 'on_hold' | 'done';
+// Task Status - dynamic status supporting custom columns
+export type TaskStatus = string;
+
+// Default statuses for type guards and initial setup
+export const DEFAULT_STATUSES = ['todo', 'in_progress', 'on_hold', 'done'] as const;
+export type DefaultTaskStatus = (typeof DEFAULT_STATUSES)[number];
 
 // Priority: 1=Low, 2=Medium, 3=High, 4=Urgent
 export type Priority = 1 | 2 | 3 | 4;
@@ -110,12 +114,50 @@ export interface CreateDependencyDto {
   lagDays?: number;
 }
 
-// Kanban column mapping
-export const KANBAN_COLUMNS: { status: TaskStatus; labelKey: string }[] = [
-  { status: 'todo', labelKey: 'status.todo' },
-  { status: 'in_progress', labelKey: 'status.inProgress' },
-  { status: 'on_hold', labelKey: 'status.onHold' },
-  { status: 'done', labelKey: 'status.done' },
+// KanbanColumn entity
+export interface KanbanColumn {
+  id: string;
+  projectId: string | null; // null = global (all projects), string = project-specific
+  name: string;
+  color: string; // Tailwind color class (e.g., 'bg-blue-500')
+  sortOrder: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateKanbanColumnDto {
+  projectId?: string | null; // null or undefined = global
+  name: string;
+  color: string;
+}
+
+export interface UpdateKanbanColumnDto {
+  name?: string;
+  color?: string;
+  sortOrder?: number;
+}
+
+// Preset colors for kanban columns
+export const COLUMN_PRESET_COLORS = [
+  { id: 'blue', class: 'bg-blue-500', label: 'Blue' },
+  { id: 'yellow', class: 'bg-yellow-500', label: 'Yellow' },
+  { id: 'green', class: 'bg-green-500', label: 'Green' },
+  { id: 'red', class: 'bg-red-500', label: 'Red' },
+  { id: 'purple', class: 'bg-purple-500', label: 'Purple' },
+  { id: 'pink', class: 'bg-pink-500', label: 'Pink' },
+  { id: 'indigo', class: 'bg-indigo-500', label: 'Indigo' },
+  { id: 'cyan', class: 'bg-cyan-500', label: 'Cyan' },
+  { id: 'orange', class: 'bg-orange-500', label: 'Orange' },
+  { id: 'gray', class: 'bg-gray-500', label: 'Gray' },
+] as const;
+
+// Default kanban columns (for initial setup)
+export const DEFAULT_KANBAN_COLUMNS: { id: DefaultTaskStatus; name: string; color: string }[] = [
+  { id: 'todo', name: 'To Do', color: 'bg-blue-500' },
+  { id: 'in_progress', name: 'In Progress', color: 'bg-yellow-500' },
+  { id: 'on_hold', name: 'On Hold', color: 'bg-gray-500' },
+  { id: 'done', name: 'Done', color: 'bg-green-500' },
 ];
 
 // Priority labels
@@ -147,6 +189,7 @@ export interface ExportData {
   labels: Label[];
   dependencies: Dependency[];
   taskLabels: { taskId: string; labelId: string }[];
+  kanbanColumns: KanbanColumn[];
 }
 
 export interface ImportResult {
@@ -156,6 +199,7 @@ export interface ImportResult {
     tasks: number;
     labels: number;
     dependencies: number;
+    columns: number;
   };
   error?: string;
 }

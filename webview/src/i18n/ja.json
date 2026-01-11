@@ -49,5 +49,21 @@
   "gantt.selectSuccessor": "後続タスクを選択: {task}",
   "gantt.clickToConnect": "クリックして接続",
   "gantt.addDependency": "依存関係を追加",
-  "validation.dueDateBeforeStartDate": "期限が開始日より前です（保存時に自動修正されます）"
+  "validation.dueDateBeforeStartDate": "期限が開始日より前です（保存時に自動修正されます）",
+  "kanban.addColumn": "カラムを追加",
+  "kanban.editColumn": "カラムを編集",
+  "kanban.columnName": "カラム名",
+  "kanban.columnNamePlaceholder": "カラム名を入力",
+  "kanban.columnColor": "色",
+  "kanban.deleteColumnWithTasks": "このカラムには {0} 件のタスクがあります。削除する前に移動先を選択してください。",
+  "kanban.moveTasksTo": "タスクの移動先",
+  "kanban.selectTargetColumn": "移動先カラムを選択",
+  "kanban.moveAndDelete": "移動して削除",
+  "kanban.columnScope": "適用範囲",
+  "kanban.scopeGlobal": "全プロジェクト共通",
+  "kanban.scopeProject": "このプロジェクトのみ ({0})",
+  "kanban.scopeGlobalDesc": "このカラムは全てのプロジェクトに表示されます",
+  "kanban.scopeProjectDesc": "このカラムはこのプロジェクトにのみ表示されます",
+  "kanban.scopeGlobalInfo": "全プロジェクトで表示",
+  "kanban.scopeProjectInfo": "{0} のみで表示"
 }

@@ -19,7 +19,7 @@ import {
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { PRIORITY_LABEL_KEYS } from '@/types';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -29,7 +29,7 @@ interface TaskFormDialogProps {
 
 export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps) {
   const { t } = useI18n();
-  const { tasks, dependencies, projects, currentProjectId, createTask, updateTaskApi, createDependency, deleteDependency } = useTaskStore();
+  const { tasks, dependencies, projects, kanbanColumns, currentProjectId, createTask, updateTaskApi, deleteTask, createDependency, deleteDependency } = useTaskStore();
   const isEditMode = !!task;
   // Show project select in All Tasks mode (for both new and edit)
   const showProjectSelect = currentProjectId === null;
@@ -151,6 +151,13 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
     deleteDependency(dependencyId);
   };
 
+  // タスクを削除
+  const handleDeleteTask = () => {
+    if (!task) return;
+    deleteTask(task.id);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -223,10 +230,14 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todo">{t('status.todo')}</SelectItem>
-                  <SelectItem value="in_progress">{t('status.inProgress')}</SelectItem>
-                  <SelectItem value="on_hold">{t('status.onHold')}</SelectItem>
-                  <SelectItem value="done">{t('status.done')}</SelectItem>
+                  {kanbanColumns.map((column) => (
+                    <SelectItem key={column.id} value={column.id}>
+                      <span className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${column.color}`} />
+                        {column.name}
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -415,16 +426,33 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             )}
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('action.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              disabled={!formData.title.trim() || (showProjectSelect && !isEditMode && !formData.projectId)}
-            >
-              {isEditMode ? t('action.save') : t('action.create')}
-            </Button>
+          <DialogFooter className="flex !justify-between w-full">
+            {/* Delete button - left side, only in edit mode */}
+            <div>
+              {isEditMode && (
+                <Button
+                  type="button"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleDeleteTask}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  {t('action.delete')}
+                </Button>
+              )}
+            </div>
+
+            {/* Right side buttons */}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                {t('action.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={!formData.title.trim() || (showProjectSelect && !isEditMode && !formData.projectId)}
+              >
+                {isEditMode ? t('action.save') : t('action.create')}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

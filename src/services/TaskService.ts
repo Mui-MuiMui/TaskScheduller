@@ -1,14 +1,23 @@
 import type { DatabaseManager } from '../database/DatabaseManager';
-import { TaskRepository, LabelRepository, DependencyRepository, ProjectRepository } from '../database/repositories';
+import {
+  TaskRepository,
+  LabelRepository,
+  DependencyRepository,
+  ProjectRepository,
+} from '../database/repositories';
+import { KanbanColumnRepository } from '../database/repositories/KanbanColumnRepository';
 import type {
   Task,
   Label,
   Dependency,
   Project,
+  KanbanColumn,
   CreateTaskDto,
   UpdateTaskDto,
   CreateLabelDto,
   CreateDependencyDto,
+  CreateKanbanColumnDto,
+  UpdateKanbanColumnDto,
   TaskFilter,
   TaskStatus,
   ExportData,
@@ -22,12 +31,14 @@ export class TaskService {
   private labelRepo: LabelRepository;
   private dependencyRepo: DependencyRepository;
   private projectRepo: ProjectRepository;
+  private kanbanColumnRepo: KanbanColumnRepository;
 
   constructor(private db: DatabaseManager) {
     this.taskRepo = new TaskRepository(db);
     this.labelRepo = new LabelRepository(db);
     this.dependencyRepo = new DependencyRepository(db);
     this.projectRepo = new ProjectRepository(db.db);
+    this.kanbanColumnRepo = new KanbanColumnRepository(db);
   }
 
   // ============================================
@@ -84,7 +95,21 @@ export class TaskService {
   }
 
   updateTaskStatus(id: string, status: TaskStatus): Task | null {
-    const task = this.taskRepo.updateStatus(id, status);
+    // Check if the target column is project-specific
+    const targetColumn = this.kanbanColumnRepo.findById(status);
+
+    let task;
+    if (targetColumn?.projectId) {
+      // If moving to a project-specific column, also update the task's project
+      task = this.taskRepo.updateStatus(id, status);
+      if (task) {
+        task = this.taskRepo.update(id, { projectId: targetColumn.projectId });
+      }
+    } else {
+      // Regular status update (global column)
+      task = this.taskRepo.updateStatus(id, status);
+    }
+
     if (task) {
       return this.enrichTaskWithLabels(task);
     }
@@ -146,6 +171,49 @@ export class TaskService {
   }
 
   // ============================================
+  // Kanban Column operations
+  // ============================================
+
+  getAllKanbanColumns(projectId?: string | null): KanbanColumn[] {
+    return this.kanbanColumnRepo.findAll(projectId);
+  }
+
+  getAllKanbanColumnsForExport(): KanbanColumn[] {
+    return this.kanbanColumnRepo.findAllForExport();
+  }
+
+  getKanbanColumnById(id: string): KanbanColumn | null {
+    return this.kanbanColumnRepo.findById(id);
+  }
+
+  createKanbanColumn(dto: CreateKanbanColumnDto, forProjectId?: string | null): KanbanColumn {
+    return this.kanbanColumnRepo.create(dto, forProjectId);
+  }
+
+  updateKanbanColumn(id: string, dto: UpdateKanbanColumnDto): KanbanColumn | null {
+    return this.kanbanColumnRepo.update(id, dto);
+  }
+
+  deleteKanbanColumn(id: string): { success: boolean; error?: string } {
+    return this.kanbanColumnRepo.delete(id);
+  }
+
+  deleteKanbanColumnWithMigration(
+    id: string,
+    targetColumnId: string
+  ): { success: boolean; error?: string } {
+    return this.kanbanColumnRepo.deleteWithMigration(id, targetColumnId);
+  }
+
+  reorderKanbanColumns(columnIds: string[], projectId?: string | null): void {
+    this.kanbanColumnRepo.reorder(columnIds, projectId);
+  }
+
+  getTaskCountByColumn(columnId: string): number {
+    return this.kanbanColumnRepo.getTaskCountByColumn(columnId);
+  }
+
+  // ============================================
   // Helper methods
   // ============================================
 
@@ -170,6 +238,7 @@ export class TaskService {
     const tasks = this.getAllTasks();
     const labels = this.getAllLabels();
     const dependencies = this.getAllDependencies();
+    const kanbanColumns = this.getAllKanbanColumnsForExport();
 
     // Get task-label relationships
     const taskLabels: { taskId: string; labelId: string }[] = [];
@@ -188,6 +257,7 @@ export class TaskService {
       labels,
       dependencies,
       taskLabels,
+      kanbanColumns,
     };
     return JSON.stringify(data, null, 2);
   }
@@ -205,11 +275,13 @@ export class TaskService {
       const projectIdMap = new Map<string, string>();
       const labelIdMap = new Map<string, string>();
       const taskIdMap = new Map<string, string>();
+      const columnIdMap = new Map<string, string>();
 
       let projectsImported = 0;
       let labelsImported = 0;
       let tasksImported = 0;
       let dependenciesImported = 0;
+      let columnsImported = 0;
 
       this.db.transaction(() => {
         // 0. Import projects (skip default-project and duplicates by name)
@@ -238,7 +310,41 @@ export class TaskService {
           }
         }
 
-        // 1. Import labels (skip duplicates by name)
+        // 1. Import kanban columns BEFORE tasks (task status references column IDs)
+        if (data.kanbanColumns) {
+          for (const column of data.kanbanColumns) {
+            // Check if column with same ID already exists (default columns like 'todo', 'in_progress', etc.)
+            const existingColumn = this.kanbanColumnRepo.findById(column.id);
+            if (existingColumn) {
+              // Map to existing column ID
+              columnIdMap.set(column.id, column.id);
+              continue;
+            }
+
+            // Map project ID if it's project-specific
+            let newProjectId: string | null = null;
+            if (column.projectId) {
+              const mappedProjectId = projectIdMap.get(column.projectId);
+              if (mappedProjectId) {
+                newProjectId = mappedProjectId;
+              } else {
+                // Project not found in map - skip this project-specific column
+                // (the project was not in the export data or failed to import)
+                continue;
+              }
+            }
+
+            const newColumn = this.kanbanColumnRepo.create({
+              projectId: newProjectId,
+              name: column.name,
+              color: column.color,
+            });
+            columnIdMap.set(column.id, newColumn.id);
+            columnsImported++;
+          }
+        }
+
+        // 2. Import labels (skip duplicates by name)
         for (const label of data.labels) {
           const existing = this.labelRepo.findByName(label.name);
           if (existing) {
@@ -253,17 +359,19 @@ export class TaskService {
           }
         }
 
-        // 2. Import tasks (2 passes for parent-child relationships)
+        // 3. Import tasks (2 passes for parent-child relationships)
         // Pass 1: Tasks without parent
         for (const task of data.tasks) {
           if (!task.parentId) {
-            // Map project ID
+            // Map project ID and status (column ID)
             const newProjectId = task.projectId ? projectIdMap.get(task.projectId) : undefined;
+            // Map status to new column ID, fallback to original if mapping not found (for default columns)
+            const newStatus = columnIdMap.get(task.status) || task.status;
             const newTask = this.taskRepo.create({
               projectId: newProjectId ?? 'default-project',
               title: task.title,
               description: task.description ?? undefined,
-              status: task.status,
+              status: newStatus,
               priority: task.priority,
               dueDate: task.dueDate ?? undefined,
               startDate: task.startDate ?? undefined,
@@ -284,11 +392,13 @@ export class TaskService {
           if (task.parentId) {
             const newParentId = taskIdMap.get(task.parentId);
             const newProjectId = task.projectId ? projectIdMap.get(task.projectId) : undefined;
+            // Map status to new column ID, fallback to original if mapping not found
+            const newStatus = columnIdMap.get(task.status) || task.status;
             const newTask = this.taskRepo.create({
               projectId: newProjectId ?? 'default-project',
               title: task.title,
               description: task.description ?? undefined,
-              status: task.status,
+              status: newStatus,
               priority: task.priority,
               dueDate: task.dueDate ?? undefined,
               startDate: task.startDate ?? undefined,
@@ -304,7 +414,7 @@ export class TaskService {
           }
         }
 
-        // 3. Import task-label relationships
+        // 4. Import task-label relationships
         if (data.taskLabels) {
           for (const tl of data.taskLabels) {
             const newTaskId = taskIdMap.get(tl.taskId);
@@ -318,7 +428,7 @@ export class TaskService {
           }
         }
 
-        // 4. Import dependencies
+        // 5. Import dependencies
         for (const dep of data.dependencies) {
           const newPredecessorId = taskIdMap.get(dep.predecessorId);
           const newSuccessorId = taskIdMap.get(dep.successorId);
@@ -341,6 +451,7 @@ export class TaskService {
           tasks: tasksImported,
           labels: labelsImported,
           dependencies: dependenciesImported,
+          columns: columnsImported,
         },
       };
     } catch (error) {

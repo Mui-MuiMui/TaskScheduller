@@ -14,8 +14,13 @@ import type {
   DependencyDeletedMessage,
   DataImportedMessage,
   ErrorMessage,
+  KanbanColumnsLoadedMessage,
+  KanbanColumnCreatedMessage,
+  KanbanColumnUpdatedMessage,
+  KanbanColumnDeletedMessage,
+  KanbanColumnsReorderedMessage,
 } from '../models/messages';
-import type { TaskFilter } from '../models/types';
+import type { TaskFilter, CreateKanbanColumnDto, UpdateKanbanColumnDto } from '../models/types';
 
 export class TaskSchedullerPanelProvider {
   public static readonly viewType = 'taskScheduller.mainPanel';
@@ -71,6 +76,8 @@ export class TaskSchedullerPanelProvider {
         this.sendCommand('SET_PROJECT', { projectId: projectId || null });
         // Reload tasks for new filter
         this._loadTasks(crypto.randomUUID(), projectId ? { projectId } : undefined);
+        // Reload kanban columns for new project (global + project-specific)
+        this._loadKanbanColumns(crypto.randomUUID(), projectId);
       }
       return;
     }
@@ -192,6 +199,26 @@ export class TaskSchedullerPanelProvider {
           await this._importData(message.id);
           break;
 
+        case 'LOAD_KANBAN_COLUMNS':
+          await this._loadKanbanColumns(message.id);
+          break;
+
+        case 'CREATE_KANBAN_COLUMN':
+          await this._createKanbanColumn(message.id, message.payload);
+          break;
+
+        case 'UPDATE_KANBAN_COLUMN':
+          await this._updateKanbanColumn(message.id, message.payload.columnId, message.payload.updates);
+          break;
+
+        case 'DELETE_KANBAN_COLUMN':
+          await this._deleteKanbanColumn(message.id, message.payload.columnId, message.payload.targetColumnId);
+          break;
+
+        case 'REORDER_KANBAN_COLUMNS':
+          await this._reorderKanbanColumns(message.id, message.payload.columnIds, message.payload.projectId);
+          break;
+
         default:
           console.warn('Unknown message type:', (message as { type: string }).type);
       }
@@ -205,6 +232,8 @@ export class TaskSchedullerPanelProvider {
     // If a project is selected, filter by project
     const filter = this._currentProjectId ? { projectId: this._currentProjectId } : undefined;
     await this._loadTasks(requestId, filter);
+    // Load kanban columns
+    await this._loadKanbanColumns(crypto.randomUUID());
     // Also send current project info
     if (this._currentProjectId) {
       this.sendCommand('SET_PROJECT', { projectId: this._currentProjectId });
@@ -515,8 +544,9 @@ export class TaskSchedullerPanelProvider {
             result.imported?.dependencies ?? 0
           )
         );
-        // Reload tasks to reflect imported data
+        // Reload tasks and columns to reflect imported data
         await this._loadTasks(crypto.randomUUID());
+        await this._loadKanbanColumns(crypto.randomUUID());
         this._refreshSidebar();
       } else {
         vscode.window.showErrorMessage(
@@ -528,6 +558,103 @@ export class TaskSchedullerPanelProvider {
         vscode.l10n.t('message.importFailed', (error as Error).message)
       );
     }
+  }
+
+  // ============================================
+  // Kanban Column operations
+  // ============================================
+
+  private async _loadKanbanColumns(requestId: string, projectId?: string | null): Promise<void> {
+    // Pass projectId to get global columns + project-specific columns
+    const columns = this._taskService.getAllKanbanColumns(projectId ?? this._currentProjectId);
+    const message: KanbanColumnsLoadedMessage = {
+      id: requestId,
+      timestamp: Date.now(),
+      type: 'KANBAN_COLUMNS_LOADED',
+      payload: { columns },
+    };
+    this._postMessage(message);
+  }
+
+  private async _createKanbanColumn(
+    requestId: string,
+    payload: CreateKanbanColumnDto
+  ): Promise<void> {
+    // Pass current project ID so the column is added at the end of this project's view
+    const column = this._taskService.createKanbanColumn(payload, this._currentProjectId);
+    const message: KanbanColumnCreatedMessage = {
+      id: requestId,
+      timestamp: Date.now(),
+      type: 'KANBAN_COLUMN_CREATED',
+      payload: { column },
+    };
+    this._postMessage(message);
+  }
+
+  private async _updateKanbanColumn(
+    requestId: string,
+    columnId: string,
+    updates: UpdateKanbanColumnDto
+  ): Promise<void> {
+    const column = this._taskService.updateKanbanColumn(columnId, updates);
+    if (column) {
+      const message: KanbanColumnUpdatedMessage = {
+        id: requestId,
+        timestamp: Date.now(),
+        type: 'KANBAN_COLUMN_UPDATED',
+        payload: { column },
+      };
+      this._postMessage(message);
+    } else {
+      this._postError(requestId, 'COLUMN_NOT_FOUND', 'Column not found');
+    }
+  }
+
+  private async _deleteKanbanColumn(
+    requestId: string,
+    columnId: string,
+    targetColumnId?: string
+  ): Promise<void> {
+    let result;
+    if (targetColumnId) {
+      result = this._taskService.deleteKanbanColumnWithMigration(columnId, targetColumnId);
+    } else {
+      result = this._taskService.deleteKanbanColumn(columnId);
+    }
+
+    if (result.success) {
+      const message: KanbanColumnDeletedMessage = {
+        id: requestId,
+        timestamp: Date.now(),
+        type: 'KANBAN_COLUMN_DELETED',
+        payload: { columnId },
+      };
+      this._postMessage(message);
+
+      // If tasks were migrated, reload tasks
+      if (targetColumnId) {
+        const filter = this._currentProjectId ? { projectId: this._currentProjectId } : undefined;
+        await this._loadTasks(crypto.randomUUID(), filter);
+      }
+    } else {
+      this._postError(requestId, 'DELETE_FAILED', result.error || 'Delete failed');
+    }
+  }
+
+  private async _reorderKanbanColumns(requestId: string, columnIds: string[], projectId?: string | null): Promise<void> {
+    // Use projectId from payload (null for "All Tasks" view, or specific project ID)
+    // Fall back to _currentProjectId if not provided
+    const effectiveProjectId = projectId !== undefined ? projectId : this._currentProjectId;
+    this._taskService.reorderKanbanColumns(columnIds, effectiveProjectId);
+    // Reload columns with the updated order
+    const columns = this._taskService.getAllKanbanColumns(effectiveProjectId);
+    const message: KanbanColumnsReorderedMessage = {
+      id: requestId,
+      timestamp: Date.now(),
+      type: 'KANBAN_COLUMNS_REORDERED',
+      payload: { columns },
+    };
+    this._postMessage(message);
   }
 
   private _postMessage(message: ExtensionToWebviewMessage): void {

@@ -99,8 +99,14 @@ export class ProjectRepository {
     // Don't allow deleting the default project
     if (id === 'default-project') return false;
 
-    // Move tasks to default project before deleting
-    this.db.run(`UPDATE tasks SET project_id = 'default-project' WHERE project_id = ?`, [id]);
+    // Delete all tasks belonging to this project
+    this.db.run(`DELETE FROM tasks WHERE project_id = ?`, [id]);
+
+    // Delete project-specific kanban columns
+    this.db.run(`DELETE FROM kanban_columns WHERE project_id = ?`, [id]);
+
+    // Delete project-specific column orders
+    this.db.run(`DELETE FROM project_column_order WHERE project_id = ?`, [id]);
 
     this.db.run('DELETE FROM projects WHERE id = ?', [id]);
     return true;

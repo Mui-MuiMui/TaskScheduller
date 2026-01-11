@@ -22,5 +22,22 @@
   "dialog.importData": "Import Data",
   "message.dataExported": "Data exported successfully",
   "message.dataImported": "Imported {0} projects, {1} tasks, {2} labels, {3} dependencies",
-  "message.importFailed": "Import failed: {0}"
+  "message.importFailed": "Import failed: {0}",
+  "sidebar.projects": "Projects",
+  "sidebar.openAllTasks": "Open All Tasks",
+  "sidebar.projectName": "Name",
+  "sidebar.projectNamePlaceholder": "Project name",
+  "sidebar.projectDescription": "Description (optional)",
+  "sidebar.projectDescriptionPlaceholder": "Description",
+  "sidebar.projectColor": "Color",
+  "sidebar.noProjects": "No projects yet.",
+  "sidebar.noProjectsHint": "Create one to get started!",
+  "sidebar.tasks": "tasks",
+  "sidebar.cancel": "Cancel",
+  "sidebar.create": "Create",
+  "sidebar.save": "Save",
+  "dialog.deleteProject": "Delete Project",
+  "dialog.deleteProjectConfirm": "Are you sure you want to delete \"{0}\"?",
+  "dialog.deleteProjectWarning": "This will permanently delete all tasks and custom columns associated with this project.",
+  "dialog.delete": "Delete"
 }

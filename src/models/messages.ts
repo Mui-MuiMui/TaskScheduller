@@ -3,10 +3,13 @@ import type {
   Label,
   Dependency,
   Project,
+  KanbanColumn,
   CreateTaskDto,
   UpdateTaskDto,
   CreateLabelDto,
   CreateDependencyDto,
+  CreateKanbanColumnDto,
+  UpdateKanbanColumnDto,
   TaskFilter,
   TaskStatus,
 } from './types';
@@ -32,7 +35,12 @@ export type ExtensionToWebviewMessage =
   | DependencyDeletedMessage
   | DataImportedMessage
   | ErrorMessage
-  | ConfigChangedMessage;
+  | ConfigChangedMessage
+  | KanbanColumnsLoadedMessage
+  | KanbanColumnCreatedMessage
+  | KanbanColumnUpdatedMessage
+  | KanbanColumnDeletedMessage
+  | KanbanColumnsReorderedMessage;
 
 export interface TasksLoadedMessage extends BaseMessage {
   type: 'TASKS_LOADED';
@@ -111,6 +119,31 @@ export interface DataImportedMessage extends BaseMessage {
   };
 }
 
+export interface KanbanColumnsLoadedMessage extends BaseMessage {
+  type: 'KANBAN_COLUMNS_LOADED';
+  payload: { columns: KanbanColumn[] };
+}
+
+export interface KanbanColumnCreatedMessage extends BaseMessage {
+  type: 'KANBAN_COLUMN_CREATED';
+  payload: { column: KanbanColumn };
+}
+
+export interface KanbanColumnUpdatedMessage extends BaseMessage {
+  type: 'KANBAN_COLUMN_UPDATED';
+  payload: { column: KanbanColumn };
+}
+
+export interface KanbanColumnDeletedMessage extends BaseMessage {
+  type: 'KANBAN_COLUMN_DELETED';
+  payload: { columnId: string };
+}
+
+export interface KanbanColumnsReorderedMessage extends BaseMessage {
+  type: 'KANBAN_COLUMNS_REORDERED';
+  payload: { columns: KanbanColumn[] };
+}
+
 // ============================================
 // Webview -> Extension Host Messages
 // ============================================
@@ -129,7 +162,12 @@ export type WebviewToExtensionMessage =
   | DeleteDependencyRequest
   | ExportDataRequest
   | ImportDataRequest
-  | WebviewReadyMessage;
+  | WebviewReadyMessage
+  | LoadKanbanColumnsRequest
+  | CreateKanbanColumnRequest
+  | UpdateKanbanColumnRequest
+  | DeleteKanbanColumnRequest
+  | ReorderKanbanColumnsRequest;
 
 export interface LoadTasksRequest extends BaseMessage {
   type: 'LOAD_TASKS';
@@ -210,6 +248,39 @@ export interface ImportDataRequest extends BaseMessage {
 
 export interface WebviewReadyMessage extends BaseMessage {
   type: 'WEBVIEW_READY';
+}
+
+export interface LoadKanbanColumnsRequest extends BaseMessage {
+  type: 'LOAD_KANBAN_COLUMNS';
+}
+
+export interface CreateKanbanColumnRequest extends BaseMessage {
+  type: 'CREATE_KANBAN_COLUMN';
+  payload: CreateKanbanColumnDto;
+}
+
+export interface UpdateKanbanColumnRequest extends BaseMessage {
+  type: 'UPDATE_KANBAN_COLUMN';
+  payload: {
+    columnId: string;
+    updates: UpdateKanbanColumnDto;
+  };
+}
+
+export interface DeleteKanbanColumnRequest extends BaseMessage {
+  type: 'DELETE_KANBAN_COLUMN';
+  payload: {
+    columnId: string;
+    targetColumnId?: string;
+  };
+}
+
+export interface ReorderKanbanColumnsRequest extends BaseMessage {
+  type: 'REORDER_KANBAN_COLUMNS';
+  payload: {
+    columnIds: string[];
+    projectId?: string | null;
+  };
 }
 
 // ============================================
