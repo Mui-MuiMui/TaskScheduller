@@ -33,11 +33,13 @@ Timeline view, dependency arrows, progress visualization
 - Assign tasks to team members (setting only)
 - Estimate hours for tasks (setting only)
 
+
 ### Dependencies
 
 - Create task dependencies (predecessor/successor relationships)
 - Visualize dependencies as arrows in Gantt chart
 - Connect mode for easy dependency creation by clicking tasks
+
 
 ### Project Organization
 
@@ -45,42 +47,18 @@ Timeline view, dependency arrows, progress visualization
 - View all tasks across projects
 - Quick project switching from sidebar
 
+
 ### Internationalization
 
 - English and Japanese language support
 - Automatically detects VSCode language settings
+
 
 ### Export / Import
 
 - Export to JSON and CSV formats
 - Import from exported JSON format
 
-## Installation
-
-### From VSIX
-
-1. Download the `.vsix` file from the releases page
-2. In VSCode, open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-3. Run "Extensions: Install from VSIX..."
-4. Select the downloaded `.vsix` file
-
-### From Source
-
-```bash
-# Clone the repository
-git clone https://github.com/Mui-MuiMui/TaskScheduller.git
-cd TaskScheduller
-
-# Install dependencies
-npm install
-cd webview && npm install && cd ..
-
-# Build the extension
-npm run build
-
-# Package the extension
-npm run package
-```
 
 ## Usage
 
@@ -89,33 +67,13 @@ npm run package
 3. Click "+" to add a new task
 4. Switch between Todo, Kanban, and Gantt views using the tabs
 
+
 ### Operations
 
 - Double-click a task to edit
 - Drag tasks in Kanban to change status
 - Use Connect Mode in Gantt to create dependencies
 
-## Tech Stack
-
-- **Extension Host**: TypeScript, VSCode Extension API
-- **Webview**: React 19, Vite, Tailwind CSS v4
-- **UI Components**: shadcn/ui
-- **State Management**: Zustand
-- **Database**: sql.js (SQLite in WebAssembly)
-- **Build Tools**: esbuild, Vite
-
-## Development
-
-```bash
-# Start development mode with hot reload
-npm run watch
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-```
 
 ## Requirements
 
@@ -130,5 +88,7 @@ npm run lint
 
 ## Donations
 
-If you find this extension useful, please consider buying me a coffee.
-<a href='https://ko-fi.com/G2G71JGGSM' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+- If you find this extension useful, please consider buying me a coffee.
+<a href='https://ko-fi.com/G2G71JGGSM' target='_blank'>
+    <img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' />
+  </a>

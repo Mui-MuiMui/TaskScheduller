@@ -55,32 +55,6 @@ VSCode拡張機能で、Todoリスト、カンバンボード、ガントチャ�
 - JSONおよびCSVでのエクスポート機能
 - 出力したJSON形式のインポート機能
 
-## インストール
-
-### VSIXファイルから
-
-1. リリースページから `.vsix` ファイルをダウンロード
-2. VSCodeでコマンドパレットを開く（`Ctrl+Shift+P` / `Cmd+Shift+P`）
-3. 「Extensions: Install from VSIX...」を実行
-4. ダウンロードした `.vsix` ファイルを選択
-
-### ソースから
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/Mui-MuiMui/TaskScheduller.git
-cd TaskScheduller
-
-# 依存関係をインストール
-npm install
-cd webview && npm install && cd ..
-
-# 拡張機能をビルド
-npm run build
-
-# 拡張機能をパッケージ化
-npm run package
-```
 
 ## 使い方
 
@@ -104,19 +78,6 @@ npm run package
 - **データベース**: sql.js (WebAssembly版SQLite)
 - **ビルドツール**: esbuild, Vite
 
-## 開発
-
-```bash
-# ホットリロード付き開発モードを開始
-npm run watch
-
-# テストを実行
-npm test
-
-# コードをリント
-npm run lint
-```
-
 ## 動作要件
 
 - VSCode 1.100.0 以上
@@ -130,6 +91,8 @@ npm run lint
 
 ## 寄付について
 
-使い勝手が良ければコーヒーおごってください。  
-<a href='https://ko-fi.com/G2G71JGGSM' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+- 使い勝手が良ければコーヒーおごってください。
+<a href='https://ko-fi.com/G2G71JGGSM' target='_blank'>
+    <img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' />
+  </a>
 
