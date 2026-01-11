@@ -127,3 +127,9 @@ npm run lint
 - MIT License - 詳細は [LICENSE](./LICENSE) を参照してください。
 - ライブラリのライセンス情報は [LIBRARIES.md](./LIBRARIES.md) を参照してください。
 (各ライブラリのライセンスの最新情報は各ライブラリのページを参照してください。最新版ではない可能性があります。)
+
+## 寄付について
+
+使い勝手が良ければコーヒーおごってください。  
+<a href='https://ko-fi.com/G2G71JGGSM' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi1.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+
