@@ -17,3 +17,4 @@ jest.config.js
 coverage/**
 *.vsix
 .git/**
+doc/**
