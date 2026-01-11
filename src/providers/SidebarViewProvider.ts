@@ -89,6 +89,8 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         type: 'PROJECTS_LOADED',
         projects,
       });
+      // Send translations after projects
+      this._sendTranslations();
     } catch (error) {
       console.error('Failed to load projects:', error);
       this._view.webview.postMessage({
@@ -96,6 +98,35 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         projects: [],
       });
     }
+  }
+
+  private _sendTranslations(): void {
+    if (!this._view) return;
+
+    const translations = {
+      'sidebar.projects': vscode.l10n.t('sidebar.projects'),
+      'sidebar.openAllTasks': vscode.l10n.t('sidebar.openAllTasks'),
+      'sidebar.projectName': vscode.l10n.t('sidebar.projectName'),
+      'sidebar.projectNamePlaceholder': vscode.l10n.t('sidebar.projectNamePlaceholder'),
+      'sidebar.projectDescription': vscode.l10n.t('sidebar.projectDescription'),
+      'sidebar.projectDescriptionPlaceholder': vscode.l10n.t('sidebar.projectDescriptionPlaceholder'),
+      'sidebar.projectColor': vscode.l10n.t('sidebar.projectColor'),
+      'sidebar.noProjects': vscode.l10n.t('sidebar.noProjects'),
+      'sidebar.noProjectsHint': vscode.l10n.t('sidebar.noProjectsHint'),
+      'sidebar.tasks': vscode.l10n.t('sidebar.tasks'),
+      'sidebar.cancel': vscode.l10n.t('sidebar.cancel'),
+      'sidebar.create': vscode.l10n.t('sidebar.create'),
+      'sidebar.save': vscode.l10n.t('sidebar.save'),
+      'dialog.deleteProject': vscode.l10n.t('dialog.deleteProject'),
+      'dialog.deleteProjectConfirm': vscode.l10n.t('dialog.deleteProjectConfirm'),
+      'dialog.deleteProjectWarning': vscode.l10n.t('dialog.deleteProjectWarning'),
+      'dialog.delete': vscode.l10n.t('dialog.delete'),
+    };
+
+    this._view.webview.postMessage({
+      type: 'TRANSLATIONS_LOADED',
+      translations,
+    });
   }
 
   private _createProject(name: string, description: string, color: string): void {
@@ -355,6 +386,76 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
           background-color: var(--vscode-button-secondaryBackground);
           color: var(--vscode-button-secondaryForeground);
         }
+
+        /* Delete confirmation dialog */
+        .dialog-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          align-items: center;
+          justify-content: center;
+        }
+        .dialog-overlay.visible {
+          display: flex;
+        }
+        .dialog {
+          background-color: var(--vscode-editor-background);
+          border: 1px solid var(--vscode-widget-border);
+          border-radius: 8px;
+          padding: 16px;
+          max-width: 300px;
+          width: 90%;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .dialog-title {
+          font-weight: 600;
+          font-size: 14px;
+          margin-bottom: 8px;
+          color: var(--vscode-foreground);
+        }
+        .dialog-message {
+          font-size: 13px;
+          color: var(--vscode-descriptionForeground);
+          margin-bottom: 16px;
+          line-height: 1.4;
+        }
+        .dialog-warning {
+          background-color: var(--vscode-inputValidation-warningBackground);
+          border: 1px solid var(--vscode-inputValidation-warningBorder);
+          border-radius: 4px;
+          padding: 8px;
+          margin-bottom: 16px;
+          font-size: 12px;
+          color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
+        }
+        .dialog-buttons {
+          display: flex;
+          gap: 8px;
+          justify-content: flex-end;
+        }
+        .dialog-button {
+          padding: 6px 14px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+        .dialog-button.cancel {
+          background-color: var(--vscode-button-secondaryBackground);
+          color: var(--vscode-button-secondaryForeground);
+        }
+        .dialog-button.delete {
+          background-color: #dc2626;
+          color: white;
+        }
+        .dialog-button.delete:hover {
+          background-color: #b91c1c;
+        }
       </style>
     </head>
     <body>
@@ -402,11 +503,30 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         Open All Tasks
       </button>
 
+      <!-- Delete confirmation dialog -->
+      <div class="dialog-overlay" id="deleteDialog">
+        <div class="dialog">
+          <div class="dialog-title">Delete Project</div>
+          <div class="dialog-message">
+            Are you sure you want to delete "<span id="deleteProjectName"></span>"?
+          </div>
+          <div class="dialog-warning">
+            ⚠️ This will permanently delete all tasks and custom columns associated with this project.
+          </div>
+          <div class="dialog-buttons">
+            <button class="dialog-button cancel" onclick="closeDeleteDialog()">Cancel</button>
+            <button class="dialog-button delete" onclick="confirmDelete()">Delete</button>
+          </div>
+        </div>
+      </div>
+
       <script>
         const vscode = acquireVsCodeApi();
         let projects = [];
         let selectedColor = '#3b82f6';
         let editingProjectId = null;
+        let pendingDeleteProjectId = null;
+        let translations = {};
 
         // Handle messages from extension
         window.addEventListener('message', event => {
@@ -414,24 +534,86 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
           if (message.type === 'PROJECTS_LOADED') {
             projects = message.projects;
             renderProjects();
+          } else if (message.type === 'TRANSLATIONS_LOADED') {
+            translations = message.translations;
+            applyTranslations();
           }
         });
+
+        function t(key, ...args) {
+          let text = translations[key] || key;
+          // Replace {0}, {1}, etc. with arguments
+          args.forEach((arg, index) => {
+            text = text.replace(new RegExp('\\\\{' + index + '\\\\}', 'g'), arg);
+          });
+          return text;
+        }
+
+        function applyTranslations() {
+          // Header
+          const headerTitle = document.querySelector('.header-title');
+          if (headerTitle) headerTitle.textContent = t('sidebar.projects');
+
+          // Form labels
+          const nameLabel = document.querySelector('#projectForm .form-group:nth-child(1) .form-label');
+          if (nameLabel) nameLabel.textContent = t('sidebar.projectName');
+
+          const descLabel = document.querySelector('#projectForm .form-group:nth-child(2) .form-label');
+          if (descLabel) descLabel.textContent = t('sidebar.projectDescription');
+
+          const colorLabel = document.querySelector('#projectForm .form-group:nth-child(3) .form-label');
+          if (colorLabel) colorLabel.textContent = t('sidebar.projectColor');
+
+          // Form inputs
+          const nameInput = document.getElementById('projectName');
+          if (nameInput) nameInput.placeholder = t('sidebar.projectNamePlaceholder');
+
+          const descInput = document.getElementById('projectDescription');
+          if (descInput) descInput.placeholder = t('sidebar.projectDescriptionPlaceholder');
+
+          // Form buttons
+          const cancelBtn = document.querySelector('.form-button.secondary');
+          if (cancelBtn) cancelBtn.textContent = t('sidebar.cancel');
+
+          // Open all button
+          const openAllBtn = document.querySelector('.open-all-button');
+          if (openAllBtn) openAllBtn.textContent = t('sidebar.openAllTasks');
+
+          // Delete dialog
+          const dialogTitle = document.querySelector('.dialog-title');
+          if (dialogTitle) dialogTitle.textContent = t('dialog.deleteProject');
+
+          const dialogWarning = document.querySelector('.dialog-warning');
+          if (dialogWarning) dialogWarning.innerHTML = '⚠️ ' + t('dialog.deleteProjectWarning');
+
+          const dialogCancelBtn = document.querySelector('.dialog-button.cancel');
+          if (dialogCancelBtn) dialogCancelBtn.textContent = t('sidebar.cancel');
+
+          const dialogDeleteBtn = document.querySelector('.dialog-button.delete');
+          if (dialogDeleteBtn) dialogDeleteBtn.textContent = t('dialog.delete');
+
+          // Re-render projects with translations
+          renderProjects();
+        }
 
         function renderProjects() {
           const list = document.getElementById('projectList');
 
           if (projects.length === 0) {
-            list.innerHTML = '<li class="empty-state">No projects yet.<br>Create one to get started!</li>';
+            const noProjects = t('sidebar.noProjects') || 'No projects yet.';
+            const hint = t('sidebar.noProjectsHint') || 'Create one to get started!';
+            list.innerHTML = \`<li class="empty-state">\${noProjects}<br>\${hint}</li>\`;
             return;
           }
 
+          const tasksLabel = t('sidebar.tasks') || 'tasks';
           list.innerHTML = projects.map(project => \`
             <li class="project-item" onclick="openProject('\${project.id}')">
               <div class="project-color" style="background-color: \${project.color}"></div>
               <div class="project-info">
                 <div class="project-name">\${escapeHtml(project.name)}</div>
                 \${project.description ? \`<div class="project-description">\${escapeHtml(project.description)}</div>\` : ''}
-                <div class="project-meta">\${project.taskCount || 0} tasks</div>
+                <div class="project-meta">\${project.taskCount || 0} \${tasksLabel}</div>
               </div>
               <div class="project-actions">
                 <button class="action-button edit" onclick="event.stopPropagation(); editProject('\${project.id}')" title="Edit">
@@ -468,7 +650,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
         function toggleCreateForm() {
           editingProjectId = null;
-          document.getElementById('formSubmitBtn').textContent = 'Create';
+          document.getElementById('formSubmitBtn').textContent = t('sidebar.create') || 'Create';
           showForm();
         }
 
@@ -481,7 +663,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
           document.getElementById('projectDescription').value = project.description || '';
           selectedColor = project.color;
           updateColorSelection();
-          document.getElementById('formSubmitBtn').textContent = 'Save';
+          document.getElementById('formSubmitBtn').textContent = t('sidebar.save') || 'Save';
           showForm();
         }
 
@@ -531,7 +713,30 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         }
 
         function deleteProject(projectId) {
-          vscode.postMessage({ command: 'deleteProject', projectId });
+          const project = projects.find(p => p.id === projectId);
+          if (!project) return;
+
+          pendingDeleteProjectId = projectId;
+          document.getElementById('deleteProjectName').textContent = project.name;
+          // Update dialog message with translated confirmation text
+          const dialogMessage = document.querySelector('.dialog-message');
+          if (dialogMessage) {
+            const confirmText = t('dialog.deleteProjectConfirm', project.name);
+            dialogMessage.innerHTML = confirmText;
+          }
+          document.getElementById('deleteDialog').classList.add('visible');
+        }
+
+        function closeDeleteDialog() {
+          document.getElementById('deleteDialog').classList.remove('visible');
+          pendingDeleteProjectId = null;
+        }
+
+        function confirmDelete() {
+          if (pendingDeleteProjectId) {
+            vscode.postMessage({ command: 'deleteProject', projectId: pendingDeleteProjectId });
+            closeDeleteDialog();
+          }
         }
 
         // Color picker

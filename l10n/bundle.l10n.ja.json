@@ -22,5 +22,22 @@
   "dialog.importData": "データをインポート",
   "message.dataExported": "データをエクスポートしました",
   "message.dataImported": "{0}件のプロジェクト、{1}件のタスク、{2}件のラベル、{3}件の依存関係をインポートしました",
-  "message.importFailed": "インポートに失敗しました: {0}"
+  "message.importFailed": "インポートに失敗しました: {0}",
+  "sidebar.projects": "プロジェクト",
+  "sidebar.openAllTasks": "すべてのタスクを開く",
+  "sidebar.projectName": "名前",
+  "sidebar.projectNamePlaceholder": "プロジェクト名",
+  "sidebar.projectDescription": "説明（任意）",
+  "sidebar.projectDescriptionPlaceholder": "説明",
+  "sidebar.projectColor": "色",
+  "sidebar.noProjects": "プロジェクトがありません。",
+  "sidebar.noProjectsHint": "新しく作成してください！",
+  "sidebar.tasks": "件のタスク",
+  "sidebar.cancel": "キャンセル",
+  "sidebar.create": "作成",
+  "sidebar.save": "保存",
+  "dialog.deleteProject": "プロジェクトを削除",
+  "dialog.deleteProjectConfirm": "「{0}」を削除してもよろしいですか？",
+  "dialog.deleteProjectWarning": "このプロジェクトに関連するすべてのタスクとカスタムカラムが完全に削除されます。",
+  "dialog.delete": "削除"
 }

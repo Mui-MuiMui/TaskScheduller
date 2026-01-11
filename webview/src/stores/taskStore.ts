@@ -4,6 +4,7 @@ import type {
   Label,
   Dependency,
   Project,
+  KanbanColumn,
   ViewType,
   CreateTaskDto,
   UpdateTaskDto,
@@ -17,6 +18,7 @@ interface TaskState {
   labels: Label[];
   dependencies: Dependency[];
   projects: Project[];
+  kanbanColumns: KanbanColumn[];
 
   // UI State
   currentView: ViewType;
@@ -38,6 +40,12 @@ interface TaskState {
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
   removeTask: (taskId: string) => void;
+
+  // Actions - Kanban Columns
+  setKanbanColumns: (columns: KanbanColumn[]) => void;
+  addKanbanColumn: (column: KanbanColumn) => void;
+  updateKanbanColumnInStore: (column: KanbanColumn) => void;
+  removeKanbanColumn: (columnId: string) => void;
 
   // Actions - UI
   setCurrentView: (view: ViewType) => void;
@@ -62,6 +70,13 @@ interface TaskState {
   exportData: (format: 'json' | 'csv') => void;
   importData: () => void;
 
+  // Actions - Kanban Column API calls
+  loadKanbanColumns: () => void;
+  createKanbanColumn: (name: string, color: string, projectId?: string | null) => void;
+  updateKanbanColumn: (columnId: string, updates: { name?: string; color?: string }) => void;
+  deleteKanbanColumn: (columnId: string, targetColumnId?: string) => void;
+  reorderKanbanColumns: (columnIds: string[]) => void;
+
   // Selectors
   getTasksByStatus: (status: TaskStatus) => Task[];
   getTaskById: (id: string) => Task | undefined;
@@ -73,6 +88,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   labels: [],
   dependencies: [],
   projects: [],
+  kanbanColumns: [],
   currentView: 'kanban',
   selectedTaskId: null,
   isLoading: true,
@@ -98,6 +114,31 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   removeTask: (taskId) => set((state) => ({
     tasks: state.tasks.filter((t) => t.id !== taskId),
+  })),
+
+  // Kanban Column setters
+  setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
+
+  addKanbanColumn: (column) => set((state) => {
+    // Only add column if it's global or belongs to current project
+    const currentProjectId = state.currentProjectId;
+    const shouldAdd = column.projectId === null || column.projectId === currentProjectId;
+    if (!shouldAdd) {
+      return state;
+    }
+    return {
+      kanbanColumns: [...state.kanbanColumns, column].sort((a, b) => a.sortOrder - b.sortOrder),
+    };
+  }),
+
+  updateKanbanColumnInStore: (column) => set((state) => ({
+    kanbanColumns: state.kanbanColumns
+      .map((c) => (c.id === column.id ? column : c))
+      .sort((a, b) => a.sortOrder - b.sortOrder),
+  })),
+
+  removeKanbanColumn: (columnId) => set((state) => ({
+    kanbanColumns: state.kanbanColumns.filter((c) => c.id !== columnId),
   })),
 
   // UI setters
@@ -163,6 +204,28 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     postMessage({ type: 'IMPORT_DATA' });
   },
 
+  // Kanban Column API calls
+  loadKanbanColumns: () => {
+    postMessage({ type: 'LOAD_KANBAN_COLUMNS' });
+  },
+
+  createKanbanColumn: (name, color, projectId) => {
+    postMessage({ type: 'CREATE_KANBAN_COLUMN', payload: { name, color, projectId } });
+  },
+
+  updateKanbanColumn: (columnId, updates) => {
+    postMessage({ type: 'UPDATE_KANBAN_COLUMN', payload: { columnId, updates } });
+  },
+
+  deleteKanbanColumn: (columnId, targetColumnId) => {
+    postMessage({ type: 'DELETE_KANBAN_COLUMN', payload: { columnId, targetColumnId } });
+  },
+
+  reorderKanbanColumns: (columnIds) => {
+    const projectId = get().currentProjectId;
+    postMessage({ type: 'REORDER_KANBAN_COLUMNS', payload: { columnIds, projectId } });
+  },
+
   // Selectors
   getTasksByStatus: (status) => {
     return get().tasks.filter((t) => t.status === status).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -180,7 +243,22 @@ export function initializeMessageHandler() {
 
   // Listen for messages from extension
   return onMessage((message) => {
-    const { setTasks, setLabels, setDependencies, setProjects, addTask, updateTask, removeTask, setLoading, setError, setConfig } = useTaskStore.getState();
+    const {
+      setTasks,
+      setLabels,
+      setDependencies,
+      setProjects,
+      addTask,
+      updateTask,
+      removeTask,
+      setLoading,
+      setError,
+      setConfig,
+      setKanbanColumns,
+      addKanbanColumn,
+      updateKanbanColumnInStore,
+      removeKanbanColumn,
+    } = useTaskStore.getState();
 
     switch (message.type) {
       case 'TASKS_LOADED':
@@ -256,6 +334,31 @@ export function initializeMessageHandler() {
           useTaskStore.setState({ currentProjectId: newProjectId });
           // Tasks will be reloaded by extension
         }
+        break;
+
+      case 'KANBAN_COLUMNS_LOADED':
+        const columnsPayload = message as { payload: { columns: KanbanColumn[] } };
+        setKanbanColumns(columnsPayload.payload.columns);
+        break;
+
+      case 'KANBAN_COLUMN_CREATED':
+        const createdColumnPayload = message as { payload: { column: KanbanColumn } };
+        addKanbanColumn(createdColumnPayload.payload.column);
+        break;
+
+      case 'KANBAN_COLUMN_UPDATED':
+        const updatedColumnPayload = message as { payload: { column: KanbanColumn } };
+        updateKanbanColumnInStore(updatedColumnPayload.payload.column);
+        break;
+
+      case 'KANBAN_COLUMN_DELETED':
+        const deletedColumnPayload = message as { payload: { columnId: string } };
+        removeKanbanColumn(deletedColumnPayload.payload.columnId);
+        break;
+
+      case 'KANBAN_COLUMNS_REORDERED':
+        const reorderedPayload = message as { payload: { columns: KanbanColumn[] } };
+        setKanbanColumns(reorderedPayload.payload.columns);
         break;
     }
   });

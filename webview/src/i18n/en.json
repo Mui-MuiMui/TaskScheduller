@@ -49,5 +49,21 @@
   "gantt.selectSuccessor": "Select successor for: {task}",
   "gantt.clickToConnect": "Click to connect",
   "gantt.addDependency": "Add Dependency",
-  "validation.dueDateBeforeStartDate": "Due date is before start date (will be auto-corrected on save)"
+  "validation.dueDateBeforeStartDate": "Due date is before start date (will be auto-corrected on save)",
+  "kanban.addColumn": "Add Column",
+  "kanban.editColumn": "Edit Column",
+  "kanban.columnName": "Column Name",
+  "kanban.columnNamePlaceholder": "Enter column name",
+  "kanban.columnColor": "Color",
+  "kanban.deleteColumnWithTasks": "This column has {0} task(s). Select a column to move them to before deleting.",
+  "kanban.moveTasksTo": "Move tasks to",
+  "kanban.selectTargetColumn": "Select target column",
+  "kanban.moveAndDelete": "Move & Delete",
+  "kanban.columnScope": "Scope",
+  "kanban.scopeGlobal": "All Projects",
+  "kanban.scopeProject": "This Project Only ({0})",
+  "kanban.scopeGlobalDesc": "This column will appear in all projects",
+  "kanban.scopeProjectDesc": "This column will only appear in this project",
+  "kanban.scopeGlobalInfo": "Visible in all projects",
+  "kanban.scopeProjectInfo": "Only visible in {0}"
 }

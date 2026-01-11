@@ -5,7 +5,8 @@ import { Button } from '@/components/ui';
 import { ChevronLeft, ChevronRight, Link2, X, FolderOpen, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
-import type { Task } from '@/types';
+import type { Task, KanbanColumn } from '@/types';
+import { getHexColor } from '@/types';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -42,7 +43,13 @@ interface ColumnData {
 
 export function GanttView() {
   const { t, locale } = useI18n();
-  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks, currentProjectId, projects, reorderTasks } = useTaskStore();
+  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks, currentProjectId, projects, reorderTasks, kanbanColumns } = useTaskStore();
+
+  // Helper function to get column color for a task status
+  const getColumnColor = useCallback((status: string): string => {
+    const column = kanbanColumns.find((col: KanbanColumn) => col.id === status);
+    return column?.color || 'bg-blue-500'; // fallback to blue
+  }, [kanbanColumns]);
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -833,28 +840,14 @@ export function GanttView() {
                       const finalLeft = position.leftPx + leftOffset;
                       const finalWidth = Math.max(position.widthPx + widthOffset, 20);
 
-                      // Define colors based on status
-                      const bgColor = task.status === 'done'
-                        ? 'bg-green-500/30'
-                        : task.status === 'in_progress'
-                        ? 'bg-yellow-500/30'
-                        : task.status === 'on_hold'
-                        ? 'bg-gray-500/30'
-                        : 'bg-blue-500/30';
-
-                      const progressColor = task.status === 'done'
-                        ? 'bg-green-500'
-                        : task.status === 'in_progress'
-                        ? 'bg-yellow-500'
-                        : task.status === 'on_hold'
-                        ? 'bg-gray-500'
-                        : 'bg-blue-500';
+                      // Get color from kanban column settings (convert to hex for inline styles)
+                      const columnColorClass = getColumnColor(task.status);
+                      const hexColor = getHexColor(columnColorClass);
 
                       return (
                         <div
                           className={cn(
                             'absolute top-1/2 -translate-y-1/2 h-7 rounded group overflow-hidden z-[5]',
-                            bgColor,
                             isDragging ? 'cursor-grabbing shadow-lg' : 'cursor-grab hover:brightness-110',
                             isConnectionSource && 'ring-2 ring-primary ring-offset-1',
                             isConnectionTarget && 'hover:ring-2 hover:ring-primary'
@@ -862,6 +855,7 @@ export function GanttView() {
                           style={{
                             left: `${finalLeft}px`,
                             width: `${finalWidth}px`,
+                            backgroundColor: `${hexColor}30`, // 30 is hex for ~19% opacity
                           }}
                           title={`${task.title}\n${task.progress}% ${t('message.complete')}`}
                           onMouseDown={(e) => {
@@ -884,8 +878,8 @@ export function GanttView() {
                         >
                           {/* Progress indicator - filled portion */}
                           <div
-                            className={cn('h-full rounded-l pointer-events-none', progressColor)}
-                            style={{ width: `${task.progress}%` }}
+                            className="h-full rounded-l pointer-events-none"
+                            style={{ width: `${task.progress}%`, backgroundColor: hexColor }}
                           />
 
                           {/* Left resize handle */}

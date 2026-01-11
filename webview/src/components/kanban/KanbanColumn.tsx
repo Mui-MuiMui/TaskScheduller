@@ -1,41 +1,56 @@
 import { memo } from 'react';
-import type { DroppableProvided } from '@hello-pangea/dnd';
+import type { DroppableProvided, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 import { Draggable } from '@hello-pangea/dnd';
-import type { Task, TaskStatus } from '@/types';
+import { GripVertical, Settings } from 'lucide-react';
+import type { Task, KanbanColumn as KanbanColumnType } from '@/types';
 import { KanbanCard } from './KanbanCard';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface KanbanColumnProps {
-  status: TaskStatus;
-  label: string;
+  column: KanbanColumnType;
   tasks: Task[];
   provided: DroppableProvided;
   isDraggingOver: boolean;
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
+  isDragging: boolean;
   onEditTask: (task: Task) => void;
+  onEditColumn: (column: KanbanColumnType) => void;
 }
 
 export const KanbanColumn = memo(function KanbanColumn({
-  status,
-  label,
+  column,
   tasks,
   provided,
   isDraggingOver,
+  dragHandleProps,
+  isDragging,
   onEditTask,
+  onEditColumn,
 }: KanbanColumnProps) {
-  const statusColors: Record<TaskStatus, string> = {
-    todo: 'bg-blue-500',
-    in_progress: 'bg-yellow-500',
-    on_hold: 'bg-gray-500',
-    done: 'bg-green-500',
-  };
-
   return (
-    <div className="flex-1 min-w-[240px] max-w-[350px] flex flex-col bg-muted/30 rounded-md">
+    <div
+      className={cn(
+        'flex-1 min-w-[240px] max-w-[350px] flex flex-col bg-muted/30 rounded-md',
+        isDragging && 'opacity-50'
+      )}
+    >
       {/* Column Header */}
       <div className="flex items-center gap-2 p-3 border-b border-border">
-        <div className={cn('w-3 h-3 rounded-full', statusColors[status])} />
-        <span className="text-sm font-semibold">{label}</span>
-        <span className="text-xs text-muted-foreground ml-auto">{tasks.length}</span>
+        <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className={cn('w-3 h-3 rounded-full', column.color)} />
+        <span className="text-sm font-semibold flex-1">{column.name}</span>
+        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => onEditColumn(column)}
+        >
+          <Settings className="w-3 h-3" />
+        </Button>
       </div>
 
       {/* Column Content */}
@@ -49,10 +64,10 @@ export const KanbanColumn = memo(function KanbanColumn({
       >
         {tasks.map((task, index) => (
           <Draggable key={task.id} draggableId={task.id} index={index}>
-            {(provided, snapshot) => (
+            {(dragProvided, snapshot) => (
               <KanbanCard
                 task={task}
-                provided={provided}
+                provided={dragProvided}
                 isDragging={snapshot.isDragging}
                 onClick={() => onEditTask(task)}
               />
