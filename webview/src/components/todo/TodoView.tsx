@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
-import { Checkbox, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { Flag, Trash2, FolderOpen, GripVertical, Check, X, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/types';
@@ -32,6 +33,7 @@ interface EditingCell {
   taskId: string;
   field: 'title' | 'description' | 'status' | 'startDate' | 'dueDate' | 'assignee' | 'progress';
   value: string;
+  cellRect: DOMRect | null;
 }
 
 // Row drag state
@@ -40,6 +42,115 @@ interface RowDragState {
   initialIndex: number;
   currentIndex: number;
 }
+
+// Callbacks interface for EditingInput
+interface EditingInputCallbacks {
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+// Separate component for editing input using Portal to fix IME issues in VSCode WebView
+const EditingInput = React.memo(function EditingInput({
+  type,
+  defaultValue,
+  saveTitle,
+  cancelTitle,
+  cellRect,
+  inputRef,
+  callbacksRef,
+}: {
+  type: 'text' | 'date' | 'number';
+  defaultValue: string;
+  saveTitle: string;
+  cancelTitle: string;
+  cellRect: DOMRect | null;
+  inputRef: React.MutableRefObject<HTMLInputElement | null>;
+  callbacksRef: React.RefObject<EditingInputCallbacks>;
+}) {
+  const localRef = useRef<HTMLInputElement>(null);
+  const didFocusRef = useRef(false);
+
+  useEffect(() => {
+    const el = localRef.current;
+    if (el && !didFocusRef.current) {
+      didFocusRef.current = true;
+      inputRef.current = el;
+      requestAnimationFrame(() => {
+        el.focus();
+        el.select();
+      });
+    }
+  }, [inputRef]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      callbacksRef.current?.onSave();
+    } else if (e.key === 'Escape') {
+      callbacksRef.current?.onCancel();
+    }
+  }, [callbacksRef]);
+
+  const handleBlur = useCallback((e: React.FocusEvent) => {
+    // Don't save if clicking on save/cancel buttons
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    if (relatedTarget?.closest('[data-editing-button]')) {
+      return;
+    }
+    callbacksRef.current?.onSave();
+  }, [callbacksRef]);
+
+  const handleSaveClick = useCallback(() => {
+    callbacksRef.current?.onSave();
+  }, [callbacksRef]);
+
+  const handleCancelClick = useCallback(() => {
+    callbacksRef.current?.onCancel();
+  }, [callbacksRef]);
+
+  if (!cellRect) return null;
+
+  // Render the input as a Portal to document.body for proper IME handling
+  return createPortal(
+    <div
+      className="fixed z-50 flex items-center gap-1 bg-background border border-border rounded-md shadow-lg p-1"
+      style={{
+        top: cellRect.top,
+        left: cellRect.left,
+        width: cellRect.width + 60, // Extra space for buttons
+        minWidth: 200,
+      }}
+    >
+      <input
+        ref={localRef}
+        type={type}
+        defaultValue={defaultValue}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        className="flex h-7 w-full rounded-md border border-border bg-input px-2 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      />
+      <button
+        type="button"
+        data-editing-button
+        onClick={handleSaveClick}
+        className="p-1 rounded hover:bg-muted shrink-0"
+        title={saveTitle}
+      >
+        <Check className="h-3 w-3 text-green-500" />
+      </button>
+      <button
+        type="button"
+        data-editing-button
+        onClick={handleCancelClick}
+        className="p-1 rounded hover:bg-muted shrink-0"
+        title={cancelTitle}
+      >
+        <X className="h-3 w-3 text-red-500" />
+      </button>
+    </div>,
+    document.body
+  );
+});
 
 export function TodoView() {
   const { t, locale } = useI18n();
@@ -60,6 +171,12 @@ export function TodoView() {
 
   // Resizing state
   const resizingRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
+
+  // Ref for inline editing input (non-controlled for IME support)
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Callbacks ref for EditingInput (to avoid re-renders)
+  const editingCallbacksRef = useRef<EditingInputCallbacks>({ onSave: () => {}, onCancel: () => {} });
 
   // Handle column resize start
   const handleResizeStart = useCallback((e: React.MouseEvent, columnId: string) => {
@@ -114,8 +231,9 @@ export function TodoView() {
   }, [locale]);
 
   // Inline editing handlers
-  const startEditing = useCallback((taskId: string, field: EditingCell['field'], currentValue: string) => {
-    setEditingCell({ taskId, field, value: currentValue });
+  const startEditing = useCallback((taskId: string, field: EditingCell['field'], currentValue: string, cellElement: HTMLElement) => {
+    const rect = cellElement.getBoundingClientRect();
+    setEditingCell({ taskId, field, value: currentValue, cellRect: rect });
   }, []);
 
   const cancelEditing = useCallback(() => {
@@ -125,7 +243,9 @@ export function TodoView() {
   const saveEditing = useCallback(() => {
     if (!editingCell) return;
 
-    const { taskId, field, value } = editingCell;
+    const { taskId, field } = editingCell;
+    // Get value from ref (non-controlled input for IME support)
+    const value = editInputRef.current?.value ?? editingCell.value;
     const updates: Record<string, unknown> = {};
 
     switch (field) {
@@ -160,13 +280,9 @@ export function TodoView() {
     setEditingCell(null);
   }, [editingCell, updateTaskApi]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveEditing();
-    } else if (e.key === 'Escape') {
-      cancelEditing();
-    }
+  // Update callbacks ref whenever functions change
+  useEffect(() => {
+    editingCallbacksRef.current = { onSave: saveEditing, onCancel: cancelEditing };
   }, [saveEditing, cancelEditing]);
 
   // Row drag handlers
@@ -265,47 +381,28 @@ export function TodoView() {
   }) => {
     const isEditing = editingCell?.taskId === taskId && editingCell?.field === field;
 
-    if (isEditing) {
-      return (
-        <td className={cn('p-1', className)} style={style}>
-          <div className="flex items-center gap-1">
-            <Input
-              type={type}
-              value={editingCell.value}
-              onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
-              onKeyDown={handleKeyDown}
-              onBlur={saveEditing}
-              autoFocus
-              className="h-7 text-sm"
-            />
-            <button
-              onClick={saveEditing}
-              className="p-1 rounded hover:bg-muted shrink-0"
-              title={t('action.save')}
-            >
-              <Check className="h-3 w-3 text-green-500" />
-            </button>
-            <button
-              onClick={cancelEditing}
-              className="p-1 rounded hover:bg-muted shrink-0"
-              title={t('action.cancel')}
-            >
-              <X className="h-3 w-3 text-red-500" />
-            </button>
-          </div>
-        </td>
-      );
-    }
-
     return (
-      <td
-        className={cn('p-3 truncate cursor-pointer hover:bg-muted/30', className)}
-        style={style}
-        onClick={() => startEditing(taskId, field, value)}
-        title={t('action.edit')}
-      >
-        {displayValue ?? (value || '-')}
-      </td>
+      <>
+        <td
+          className={cn('p-3 truncate cursor-pointer hover:bg-muted/30', className)}
+          style={style}
+          onClick={(e) => startEditing(taskId, field, value, e.currentTarget)}
+          title={t('action.edit')}
+        >
+          {displayValue ?? (value || '-')}
+        </td>
+        {isEditing && (
+          <EditingInput
+            type={type}
+            defaultValue={editingCell.value}
+            saveTitle={t('action.save')}
+            cancelTitle={t('action.cancel')}
+            cellRect={editingCell.cellRect}
+            inputRef={editInputRef}
+            callbacksRef={editingCallbacksRef}
+          />
+        )}
+      </>
     );
   };
 
@@ -341,7 +438,7 @@ export function TodoView() {
       <td
         className="p-3 truncate cursor-pointer hover:bg-muted/30"
         style={style}
-        onClick={() => startEditing(task.id, 'status', task.status)}
+        onClick={(e) => startEditing(task.id, 'status', task.status, e.currentTarget)}
         title={t('action.edit')}
       >
         <span className={cn('text-sm', STATUS_COLORS[task.status])}>
