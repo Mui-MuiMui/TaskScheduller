@@ -147,6 +147,7 @@ export function KanbanView() {
                       <div
                         ref={dragProvided.innerRef}
                         {...dragProvided.draggableProps}
+                        className="h-full"
                       >
                         <Droppable droppableId={column.id} type="TASK">
                           {(dropProvided, dropSnapshot) => (

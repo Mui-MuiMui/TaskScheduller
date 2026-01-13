@@ -31,12 +31,12 @@ export const KanbanColumn = memo(function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex-1 min-w-[240px] max-w-[350px] flex flex-col bg-muted/30 rounded-md',
+        'h-full min-w-[240px] max-w-[350px] flex flex-col bg-muted/30 rounded-md',
         isDragging && 'opacity-50'
       )}
     >
       {/* Column Header */}
-      <div className="flex items-center gap-2 p-3 border-b border-border">
+      <div className="sticky top-0 z-10 flex items-center gap-2 p-3 border-b border-border bg-muted rounded-t-md">
         <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
