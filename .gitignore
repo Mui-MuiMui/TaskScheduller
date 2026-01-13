@@ -39,3 +39,6 @@ webview/.vite/
 *.db
 *.sqlite
 *.sqlite3
+
+# AI
+tmpclaude*cwd

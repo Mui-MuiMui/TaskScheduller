@@ -69,14 +69,6 @@ VSCode拡張機能で、Todoリスト、カンバンボード、ガントチャ�
 - カンバンでタスクをドラッグしてステータスを変更
 - ガントの接続モードで依存関係を作成
 
-## 技術スタック
-
-- **Extension Host**: TypeScript, VSCode Extension API
-- **Webview**: React 19, Vite, Tailwind CSS v4
-- **UIコンポーネント**: shadcn/ui
-- **状態管理**: Zustand
-- **データベース**: sql.js (WebAssembly版SQLite)
-- **ビルドツール**: esbuild, Vite
 
 ## 動作要件
 

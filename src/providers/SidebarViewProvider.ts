@@ -8,11 +8,37 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
   private _view?: vscode.WebviewView;
   private _projectRepository?: ProjectRepository;
+  private _databaseChangeSubscription?: vscode.Disposable;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _databaseManager?: DatabaseManager
-  ) {}
+  ) {
+    // Subscribe to database changes from other windows
+    if (this._databaseManager) {
+      this._databaseChangeSubscription = this._databaseManager.onDatabaseChanged(() => {
+        this._handleDatabaseChanged();
+      });
+    }
+  }
+
+  /**
+   * Handles database changes triggered by external sources (e.g., other VSCode windows).
+   * Reloads the project list.
+   */
+  private _handleDatabaseChanged(): void {
+    console.log('Database changed externally, refreshing sidebar...');
+    // Reset repository to force reload from new database state
+    this._projectRepository = undefined;
+    this._sendProjects();
+  }
+
+  /**
+   * Disposes of the provider and cleans up resources.
+   */
+  public dispose(): void {
+    this._databaseChangeSubscription?.dispose();
+  }
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -62,10 +88,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   private _getProjectRepository(): ProjectRepository | undefined {
     if (!this._databaseManager) return undefined;
     if (!this._projectRepository) {
-      // Access db through DatabaseManager's query methods
-      this._projectRepository = new ProjectRepository(
-        (this._databaseManager as unknown as { db: import('sql.js').Database }).db
-      );
+      this._projectRepository = new ProjectRepository(this._databaseManager);
     }
     return this._projectRepository;
   }

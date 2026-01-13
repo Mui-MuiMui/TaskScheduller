@@ -31,12 +31,36 @@ export class TaskSchedullerPanelProvider {
   private _taskService: TaskService;
   private _disposables: vscode.Disposable[] = [];
   private _currentProjectId?: string;
+  private _databaseChangeSubscription?: vscode.Disposable;
 
   private constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _databaseManager: DatabaseManager
   ) {
     this._taskService = new TaskService(_databaseManager);
+
+    // Subscribe to database changes from other windows
+    this._databaseChangeSubscription = this._databaseManager.onDatabaseChanged(() => {
+      this._handleDatabaseChanged();
+    });
+  }
+
+  /**
+   * Handles database changes triggered by external sources (e.g., other VSCode windows).
+   * Reloads all data and updates the UI.
+   */
+  private _handleDatabaseChanged(): void {
+    console.log('Database changed externally, refreshing UI...');
+
+    // Reload data in the panel if it's open
+    if (this._panel) {
+      const filter = this._currentProjectId ? { projectId: this._currentProjectId } : undefined;
+      this._loadTasks(crypto.randomUUID(), filter);
+      this._loadKanbanColumns(crypto.randomUUID(), this._currentProjectId);
+    }
+
+    // Refresh the sidebar
+    this._refreshSidebar();
   }
 
   public static getInstance(
@@ -142,6 +166,15 @@ export class TaskSchedullerPanelProvider {
         d.dispose();
       }
     }
+  }
+
+  /**
+   * Disposes of the provider and cleans up resources.
+   * Should be called when the extension is deactivated.
+   */
+  public dispose(): void {
+    this._databaseChangeSubscription?.dispose();
+    this._dispose();
   }
 
   private async _handleMessage(message: WebviewToExtensionMessage): Promise<void> {

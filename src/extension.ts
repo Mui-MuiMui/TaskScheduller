@@ -5,6 +5,8 @@ import { SidebarViewProvider } from './providers/SidebarViewProvider';
 import { registerCommands } from './commands';
 
 let databaseManager: DatabaseManager | undefined;
+let panelProvider: TaskSchedullerPanelProvider | undefined;
+let sidebarProvider: SidebarViewProvider | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log('TaskScheduller extension is now activating...');
@@ -16,10 +18,10 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log('Database initialized successfully');
 
     // Create sidebar view provider with database access
-    const sidebarProvider = new SidebarViewProvider(context.extensionUri, databaseManager);
+    sidebarProvider = new SidebarViewProvider(context.extensionUri, databaseManager);
 
     // Create panel provider (singleton)
-    const panelProvider = TaskSchedullerPanelProvider.getInstance(
+    panelProvider = TaskSchedullerPanelProvider.getInstance(
       context.extensionUri,
       databaseManager,
       sidebarProvider
@@ -47,6 +49,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   console.log('TaskScheduller extension is deactivating...');
+  if (panelProvider) {
+    panelProvider.dispose();
+  }
+  if (sidebarProvider) {
+    sidebarProvider.dispose();
+  }
   if (databaseManager) {
     databaseManager.close();
   }

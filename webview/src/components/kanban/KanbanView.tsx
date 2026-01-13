@@ -69,28 +69,46 @@ export function KanbanView() {
     const sourceStatus = source.droppableId as TaskStatus;
     const destStatus = destination.droppableId as TaskStatus;
 
-    // Get tasks for the destination column
-    const destTasks = tasks
-      .filter((t) => t.status === destStatus)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-
-    // If moving to different column, update status
+    // Moving to different column - only update status, preserve sortOrder
     if (sourceStatus !== destStatus) {
       updateTaskStatus(draggableId, destStatus);
+      // Don't reorder - sortOrder is preserved to maintain consistent order across views
+      return;
     }
 
-    // Reorder within destination
-    const taskIds = destTasks.map((t) => t.id);
+    // Reordering within same column - update sortOrder for all tasks
+    // Get all tasks (not just current column) sorted by sortOrder
+    const allTasksSorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+    const allTaskIds = allTasksSorted.map((t) => t.id);
 
-    // Remove if coming from same column
-    if (sourceStatus === destStatus) {
-      taskIds.splice(source.index, 1);
+    // Find current and new positions in the global list
+    const currentGlobalIndex = allTaskIds.indexOf(draggableId);
+
+    // Get tasks in source column sorted by sortOrder
+    const columnTasks = tasks
+      .filter((t) => t.status === sourceStatus)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Calculate the target global position based on column reordering
+    const taskAtDestIndex = columnTasks[destination.index];
+
+    // Remove dragged task from global list
+    allTaskIds.splice(currentGlobalIndex, 1);
+
+    // Find where to insert in the global list
+    let insertIndex: number;
+    if (source.index < destination.index) {
+      // Moving down - insert after the task at destination
+      insertIndex = taskAtDestIndex ? allTaskIds.indexOf(taskAtDestIndex.id) + 1 : allTaskIds.length;
+    } else {
+      // Moving up - insert before the task at destination
+      insertIndex = taskAtDestIndex ? allTaskIds.indexOf(taskAtDestIndex.id) : 0;
     }
 
-    // Insert at new position
-    taskIds.splice(destination.index, 0, draggableId);
+    allTaskIds.splice(insertIndex, 0, draggableId);
 
-    reorderTasks(taskIds, destStatus);
+    // Reorder all tasks globally
+    reorderTasks(allTaskIds);
   };
 
   const handleEditTask = useCallback((task: Task) => {
@@ -129,6 +147,7 @@ export function KanbanView() {
                       <div
                         ref={dragProvided.innerRef}
                         {...dragProvided.draggableProps}
+                        className="h-full"
                       >
                         <Droppable droppableId={column.id} type="TASK">
                           {(dropProvided, dropSnapshot) => (
