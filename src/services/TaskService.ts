@@ -37,7 +37,7 @@ export class TaskService {
     this.taskRepo = new TaskRepository(db);
     this.labelRepo = new LabelRepository(db);
     this.dependencyRepo = new DependencyRepository(db);
-    this.projectRepo = new ProjectRepository(db.db);
+    this.projectRepo = new ProjectRepository(db);
     this.kanbanColumnRepo = new KanbanColumnRepository(db);
   }
 

@@ -1,9 +1,13 @@
-import type { Database } from 'sql.js';
 import { v4 as uuidv4 } from 'uuid';
+import type { DatabaseManager } from '../DatabaseManager';
 import type { Project, CreateProjectDto, UpdateProjectDto } from '../../models/types';
 
 export class ProjectRepository {
-  constructor(private db: Database) {}
+  constructor(private dbManager: DatabaseManager) {}
+
+  private get db() {
+    return this.dbManager.db;
+  }
 
   findAll(): Project[] {
     const stmt = this.db.prepare(`
@@ -50,7 +54,7 @@ export class ProjectRepository {
     const maxOrderResult = this.db.exec('SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM projects');
     const sortOrder = maxOrderResult[0]?.values[0]?.[0] as number || 0;
 
-    this.db.run(
+    this.dbManager.execute(
       `INSERT INTO projects (id, name, description, color, sort_order, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [id, dto.name, dto.description || null, dto.color || '#3b82f6', sortOrder, now, now]
@@ -86,7 +90,7 @@ export class ProjectRepository {
     if (updates.length === 0) return existing;
 
     values.push(id);
-    this.db.run(`UPDATE projects SET ${updates.join(', ')} WHERE id = ?`, values);
+    this.dbManager.execute(`UPDATE projects SET ${updates.join(', ')} WHERE id = ?`, values);
 
     return this.findById(id);
   }
@@ -100,21 +104,21 @@ export class ProjectRepository {
     if (id === 'default-project') return false;
 
     // Delete all tasks belonging to this project
-    this.db.run(`DELETE FROM tasks WHERE project_id = ?`, [id]);
+    this.dbManager.execute(`DELETE FROM tasks WHERE project_id = ?`, [id]);
 
     // Delete project-specific kanban columns
-    this.db.run(`DELETE FROM kanban_columns WHERE project_id = ?`, [id]);
+    this.dbManager.execute(`DELETE FROM kanban_columns WHERE project_id = ?`, [id]);
 
     // Delete project-specific column orders
-    this.db.run(`DELETE FROM project_column_order WHERE project_id = ?`, [id]);
+    this.dbManager.execute(`DELETE FROM project_column_order WHERE project_id = ?`, [id]);
 
-    this.db.run('DELETE FROM projects WHERE id = ?', [id]);
+    this.dbManager.execute('DELETE FROM projects WHERE id = ?', [id]);
     return true;
   }
 
   reorder(projectIds: string[]): void {
     projectIds.forEach((id, index) => {
-      this.db.run('UPDATE projects SET sort_order = ? WHERE id = ?', [index, id]);
+      this.dbManager.execute('UPDATE projects SET sort_order = ? WHERE id = ?', [index, id]);
     });
   }
 

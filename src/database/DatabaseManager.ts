@@ -1,4 +1,4 @@
-import initSqlJs, { Database } from 'sql.js';
+import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -9,6 +9,16 @@ export class DatabaseManager {
   private dbPath: string;
   private wasmPath: string;
   private _inTransaction: boolean = false;
+  private _fileWatcher: vscode.FileSystemWatcher | null = null;
+  private _onDatabaseChanged = new vscode.EventEmitter<void>();
+  private _lastSaveTime: number = 0;
+  private _SQL: SqlJsStatic | null = null;
+
+  /**
+   * Event that fires when the database file is changed externally (e.g., by another VSCode window).
+   * Subscribers should reload their data when this event fires.
+   */
+  public readonly onDatabaseChanged = this._onDatabaseChanged.event;
 
   // Expose database for repositories
   public get db(): Database {
@@ -16,6 +26,13 @@ export class DatabaseManager {
       throw new Error('Database not initialized');
     }
     return this._db;
+  }
+
+  /**
+   * Returns the path to the database file.
+   */
+  public get databasePath(): string {
+    return this.dbPath;
   }
 
   constructor(private context: vscode.ExtensionContext) {
@@ -35,22 +52,92 @@ export class DatabaseManager {
     }
 
     // Initialize sql.js with WASM
-    const SQL = await initSqlJs({
+    this._SQL = await initSqlJs({
       locateFile: () => this.wasmPath,
     });
 
     // Load existing database or create new one
     if (fs.existsSync(this.dbPath)) {
       const buffer = fs.readFileSync(this.dbPath);
-      this._db = new SQL.Database(buffer);
+      this._db = new this._SQL.Database(buffer);
       console.log('Loaded existing database');
     } else {
-      this._db = new SQL.Database();
+      this._db = new this._SQL.Database();
       console.log('Created new database');
     }
 
     // Run migrations
     await this.runMigrations();
+
+    // Setup file watcher to detect external changes
+    this._setupFileWatcher();
+  }
+
+  /**
+   * Sets up a file watcher to detect when the database file is modified externally.
+   * This enables synchronization across multiple VSCode windows.
+   */
+  private _setupFileWatcher(): void {
+    // Watch the database file for changes
+    const pattern = new vscode.RelativePattern(
+      vscode.Uri.file(path.dirname(this.dbPath)),
+      path.basename(this.dbPath)
+    );
+
+    this._fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+    this._fileWatcher.onDidChange(() => {
+      this._handleExternalChange();
+    });
+
+    this._fileWatcher.onDidCreate(() => {
+      this._handleExternalChange();
+    });
+
+    console.log('Database file watcher initialized');
+  }
+
+  /**
+   * Handles external changes to the database file.
+   * Reloads the database from disk and notifies subscribers.
+   */
+  private _handleExternalChange(): void {
+    // Ignore changes that were triggered by our own save operations
+    // Use a 500ms threshold to account for file system delays
+    const timeSinceLastSave = Date.now() - this._lastSaveTime;
+    if (timeSinceLastSave < 500) {
+      console.log('Ignoring self-triggered database change');
+      return;
+    }
+
+    console.log('External database change detected, reloading...');
+    this._reloadFromDisk();
+  }
+
+  /**
+   * Reloads the database from disk.
+   * Called when an external change is detected.
+   */
+  private _reloadFromDisk(): void {
+    if (!this._SQL || !fs.existsSync(this.dbPath)) {
+      return;
+    }
+
+    try {
+      // Close the current database
+      this._db?.close();
+
+      // Load the updated database from disk
+      const buffer = fs.readFileSync(this.dbPath);
+      this._db = new this._SQL.Database(buffer);
+
+      console.log('Database reloaded from disk');
+
+      // Notify subscribers that the database has changed
+      this._onDatabaseChanged.fire();
+    } catch (error) {
+      console.error('Failed to reload database:', error);
+    }
   }
 
   private async runMigrations(): Promise<void> {
@@ -135,6 +222,9 @@ export class DatabaseManager {
       fs.mkdirSync(dir, { recursive: true });
     }
 
+    // Record the save time to prevent self-triggered reload
+    this._lastSaveTime = Date.now();
+
     const data = this._db.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(this.dbPath, buffer);
@@ -142,6 +232,9 @@ export class DatabaseManager {
 
   close(): void {
     this.save();
+    this._fileWatcher?.dispose();
+    this._fileWatcher = null;
+    this._onDatabaseChanged.dispose();
     this._db?.close();
     this._db = null;
     console.log('Database closed');
