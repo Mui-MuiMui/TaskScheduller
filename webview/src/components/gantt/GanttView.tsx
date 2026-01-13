@@ -414,18 +414,41 @@ export function GanttView() {
 
     const { initialIndex, currentIndex } = rowDragState;
     if (initialIndex !== currentIndex) {
-      // Reorder the tasks
-      const reorderedTasks = [...tasksWithDates];
-      const [movedTask] = reorderedTasks.splice(initialIndex, 1);
-      reorderedTasks.splice(currentIndex, 0, movedTask);
+      // Get all tasks sorted by sortOrder (not just tasksWithDates)
+      const allTasksSorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+      const allTaskIds = allTasksSorted.map(t => t.id);
 
-      // Call reorder with new order
-      const taskIds = reorderedTasks.map(t => t.id);
-      reorderTasks(taskIds);
+      // Get the dragged task
+      const draggedTask = tasksWithDates[initialIndex];
+      const targetTask = tasksWithDates[currentIndex];
+
+      // Find positions in the global list
+      const currentGlobalIndex = allTaskIds.indexOf(draggedTask.id);
+      const targetGlobalIndex = allTaskIds.indexOf(targetTask.id);
+
+      // Remove from current position
+      allTaskIds.splice(currentGlobalIndex, 1);
+
+      // Insert at new position (adjust if needed after removal)
+      const adjustedTargetIndex = currentGlobalIndex < targetGlobalIndex
+        ? targetGlobalIndex
+        : targetGlobalIndex;
+
+      if (initialIndex < currentIndex) {
+        // Moving down - insert after target
+        allTaskIds.splice(adjustedTargetIndex, 0, draggedTask.id);
+      } else {
+        // Moving up - insert before target
+        const insertIndex = allTaskIds.indexOf(targetTask.id);
+        allTaskIds.splice(insertIndex, 0, draggedTask.id);
+      }
+
+      // Reorder all tasks globally
+      reorderTasks(allTaskIds);
     }
 
     setRowDragState(null);
-  }, [rowDragState, tasksWithDates, reorderTasks]);
+  }, [rowDragState, tasksWithDates, tasks, reorderTasks]);
 
   // Calculate dependency arrow paths
   // Use taller rows in All Tasks mode to accommodate project indicator

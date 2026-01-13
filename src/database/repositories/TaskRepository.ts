@@ -127,10 +127,9 @@ export class TaskRepository {
     const now = new Date().toISOString();
     const projectId = dto.projectId ?? 'default-project';
 
-    // Get max sort_order for the status
+    // Get max sort_order globally (not per status) to maintain consistent order across all views
     const maxOrderResult = this.db.queryOne<{ max_order: number | null }>(
-      'SELECT MAX(sort_order) as max_order FROM tasks WHERE status = ?',
-      [dto.status ?? 'todo']
+      'SELECT MAX(sort_order) as max_order FROM tasks'
     );
     const sortOrder = (maxOrderResult?.max_order ?? -1) + 1;
 

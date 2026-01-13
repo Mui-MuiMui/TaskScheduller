@@ -89,15 +89,9 @@ export function TodoView() {
   // Check if we're in All Tasks mode
   const showProjectColumn = currentProjectId === null;
 
-  // Filter and sort tasks
+  // Filter and sort tasks - use sortOrder only to match Gantt chart order
   const filtered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
-  const statusOrder: Record<string, number> = { todo: 0, in_progress: 1, on_hold: 2, done: 3 };
-  const sortedTasks = [...filtered].sort((a, b) => {
-    if (statusOrder[a.status] !== statusOrder[b.status]) {
-      return statusOrder[a.status] - statusOrder[b.status];
-    }
-    return a.sortOrder - b.sortOrder;
-  });
+  const sortedTasks = [...filtered].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -197,15 +191,37 @@ export function TodoView() {
 
     const { initialIndex, currentIndex } = rowDragState;
     if (initialIndex !== currentIndex) {
-      const reorderedTasks = [...sortedTasks];
-      const [movedTask] = reorderedTasks.splice(initialIndex, 1);
-      reorderedTasks.splice(currentIndex, 0, movedTask);
-      const taskIds = reorderedTasks.map(t => t.id);
-      reorderTasks(taskIds);
+      // Get all tasks sorted by sortOrder (not just filtered/sorted display tasks)
+      const allTasksSorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+      const allTaskIds = allTasksSorted.map(t => t.id);
+
+      // Get the dragged task and target task from the displayed list
+      const draggedTask = sortedTasks[initialIndex];
+      const targetTask = sortedTasks[currentIndex];
+
+      // Find positions in the global list
+      const currentGlobalIndex = allTaskIds.indexOf(draggedTask.id);
+
+      // Remove from current position
+      allTaskIds.splice(currentGlobalIndex, 1);
+
+      // Find where to insert in the global list
+      if (initialIndex < currentIndex) {
+        // Moving down - insert after target
+        const targetGlobalIndex = allTaskIds.indexOf(targetTask.id);
+        allTaskIds.splice(targetGlobalIndex + 1, 0, draggedTask.id);
+      } else {
+        // Moving up - insert before target
+        const targetGlobalIndex = allTaskIds.indexOf(targetTask.id);
+        allTaskIds.splice(targetGlobalIndex, 0, draggedTask.id);
+      }
+
+      // Reorder all tasks globally
+      reorderTasks(allTaskIds);
     }
 
     setRowDragState(null);
-  }, [rowDragState, sortedTasks, reorderTasks]);
+  }, [rowDragState, sortedTasks, tasks, reorderTasks]);
 
   if (sortedTasks.length === 0) {
     return (
