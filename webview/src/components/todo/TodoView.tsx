@@ -181,6 +181,23 @@ export function TodoView() {
   // Callbacks ref for EditingInput (to avoid re-renders)
   const editingCallbacksRef = useRef<EditingInputCallbacks>({ onSave: () => {}, onCancel: () => {} });
 
+  // Track Ctrl key state for copy on drag
+  const ctrlKeyRef = useRef(false);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
   // Handle column resize start
   const handleResizeStart = useCallback((e: React.MouseEvent, columnId: string) => {
     e.preventDefault();
@@ -314,7 +331,7 @@ export function TodoView() {
 
   // Row drag handlers
   const handleRowDragStart = useCallback((e: React.DragEvent, taskId: string, index: number) => {
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copyMove';
     e.dataTransfer.setData('text/plain', taskId);
     setRowDragState({
       taskId,
@@ -333,13 +350,38 @@ export function TodoView() {
     if (!rowDragState) return;
 
     const { initialIndex, currentIndex } = rowDragState;
+    const draggedTask = sortedTasks[initialIndex];
+
+    // Ctrl+ドラッグで複製
+    if (ctrlKeyRef.current && draggedTask) {
+      const duplicateData = {
+        projectId: draggedTask.projectId || undefined,
+        title: draggedTask.title,
+        description: draggedTask.description || undefined,
+        status: draggedTask.status,
+        priority: draggedTask.priority,
+        dueDate: draggedTask.dueDate || undefined,
+        startDate: draggedTask.startDate || undefined,
+        assignee: draggedTask.assignee || undefined,
+        estimatedHours: draggedTask.estimatedHours || undefined,
+        progress: 0, // 進捗は0にリセット
+      };
+      // ドロップ位置の直前のタスクIDを取得（その後ろに挿入）
+      const targetTask = sortedTasks[currentIndex];
+      const insertAfterTaskId = currentIndex > 0
+        ? (initialIndex < currentIndex ? targetTask?.id : sortedTasks[currentIndex - 1]?.id)
+        : undefined;
+      createTask(duplicateData, undefined, insertAfterTaskId || draggedTask.id);
+      setRowDragState(null);
+      return;
+    }
+
     if (initialIndex !== currentIndex) {
       // Get all tasks sorted by sortOrder (not just filtered/sorted display tasks)
       const allTasksSorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
       const allTaskIds = allTasksSorted.map(t => t.id);
 
       // Get the dragged task and target task from the displayed list
-      const draggedTask = sortedTasks[initialIndex];
       const targetTask = sortedTasks[currentIndex];
 
       // Find positions in the global list
@@ -364,7 +406,7 @@ export function TodoView() {
     }
 
     setRowDragState(null);
-  }, [rowDragState, sortedTasks, tasks, reorderTasks]);
+  }, [rowDragState, sortedTasks, tasks, reorderTasks, createTask]);
 
 
   // Resizable column header component with border
