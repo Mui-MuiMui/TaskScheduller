@@ -19,7 +19,7 @@ import {
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { PRIORITY_LABEL_KEYS } from '@/types';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Copy } from 'lucide-react';
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -155,6 +155,33 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
   const handleDeleteTask = () => {
     if (!task) return;
     deleteTask(task.id);
+    onOpenChange(false);
+  };
+
+  // タスクを複製
+  const handleDuplicateTask = () => {
+    if (!task) return;
+
+    // 日付の整合性チェック
+    let finalStartDate = formData.startDate || undefined;
+    let finalDueDate = formData.dueDate || undefined;
+    if (finalStartDate && finalDueDate && finalDueDate < finalStartDate) {
+      finalDueDate = finalStartDate;
+    }
+
+    const duplicateData = {
+      ...formData,
+      description: formData.description || undefined,
+      dueDate: finalDueDate,
+      startDate: finalStartDate,
+      assignee: formData.assignee || undefined,
+      estimatedHours: formData.estimatedHours || undefined,
+      progress: 0, // 進捗は0にリセット
+    };
+
+    // 既存の先行タスクIDを取得して新規タスクに引き継ぐ
+    const predecessorIds = currentDependencies.map(d => d.dependency.predecessorId);
+    createTask(duplicateData, predecessorIds);
     onOpenChange(false);
   };
 
@@ -427,17 +454,27 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
           </div>
 
           <DialogFooter className="flex !justify-between w-full">
-            {/* Delete button - left side, only in edit mode */}
-            <div>
+            {/* Delete and Duplicate buttons - left side, only in edit mode */}
+            <div className="flex gap-2">
               {isEditMode && (
-                <Button
-                  type="button"
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  onClick={handleDeleteTask}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  {t('action.delete')}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    onClick={handleDeleteTask}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    {t('action.delete')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDuplicateTask}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    {t('action.duplicate')}
+                  </Button>
+                </>
               )}
             </div>
 

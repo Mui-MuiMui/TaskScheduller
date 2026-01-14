@@ -154,12 +154,15 @@ const EditingInput = React.memo(function EditingInput({
 
 export function TodoView() {
   const { t, locale } = useI18n();
-  const { tasks, updateTaskStatus, updateTaskApi, deleteTask, reorderTasks, showCompletedTasks, currentProjectId, projects, kanbanColumns } = useTaskStore();
+  const { tasks, updateTaskStatus, updateTaskApi, deleteTask, reorderTasks, showCompletedTasks, currentProjectId, projects, kanbanColumns, createTask } = useTaskStore();
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+
+  // New task input state
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   // Row drag state
   const [rowDragState, setRowDragState] = useState<RowDragState | null>(null);
@@ -285,6 +288,30 @@ export function TodoView() {
     editingCallbacksRef.current = { onSave: saveEditing, onCancel: cancelEditing };
   }, [saveEditing, cancelEditing]);
 
+  // New task creation handler
+  const handleCreateNewTask = useCallback(() => {
+    const title = newTaskTitle.trim();
+    if (!title) return;
+
+    const taskData = {
+      projectId: currentProjectId || undefined,
+      title,
+      status: 'todo' as const,
+      priority: 2 as const,
+      progress: 0,
+    };
+
+    createTask(taskData);
+    setNewTaskTitle('');
+  }, [newTaskTitle, currentProjectId, createTask]);
+
+  const handleNewTaskKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleCreateNewTask();
+    }
+  }, [handleCreateNewTask]);
+
   // Row drag handlers
   const handleRowDragStart = useCallback((e: React.DragEvent, taskId: string, index: number) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -339,13 +366,6 @@ export function TodoView() {
     setRowDragState(null);
   }, [rowDragState, sortedTasks, tasks, reorderTasks]);
 
-  if (sortedTasks.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground text-base">{t('message.noTasks')}</p>
-      </div>
-    );
-  }
 
   // Resizable column header component with border
   const ResizableHeader = ({ columnId, children }: { columnId: string; children: React.ReactNode }) => (
@@ -653,6 +673,31 @@ export function TodoView() {
               </tr>
             );
           })}
+          {/* New task input row */}
+          <tr className="border-b border-border hover:bg-muted/50">
+            <td className="p-2"></td>
+            <td className="p-3"></td>
+            <td className="p-3"></td>
+            <td className="p-3" style={{ width: columnWidths.title }}>
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={handleNewTaskKeyDown}
+                onBlur={handleCreateNewTask}
+                placeholder={t('task.newTaskPlaceholder')}
+                className="w-full bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground"
+              />
+            </td>
+            {showProjectColumn && <td className="p-3" style={{ width: columnWidths.project }}></td>}
+            <td className="p-3" style={{ width: columnWidths.description }}></td>
+            <td className="p-3" style={{ width: columnWidths.status }}></td>
+            <td className="p-3" style={{ width: columnWidths.startDate }}></td>
+            <td className="p-3" style={{ width: columnWidths.dueDate }}></td>
+            <td className="p-3" style={{ width: columnWidths.assignee }}></td>
+            <td className="p-3" style={{ width: columnWidths.progress }}></td>
+            <td className="p-3"></td>
+          </tr>
         </tbody>
       </table>
 
