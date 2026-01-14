@@ -7,7 +7,7 @@ import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 import { Flag, Trash2, FolderOpen, GripVertical, Check, X, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/types';
-import { STATUS_COLORS } from '@/types';
+import { getHexColor } from '@/types';
 
 // Column configuration with resizable widths
 interface ColumnConfig {
@@ -154,12 +154,15 @@ const EditingInput = React.memo(function EditingInput({
 
 export function TodoView() {
   const { t, locale } = useI18n();
-  const { tasks, updateTaskStatus, updateTaskApi, deleteTask, reorderTasks, showCompletedTasks, currentProjectId, projects } = useTaskStore();
+  const { tasks, updateTaskStatus, updateTaskApi, deleteTask, reorderTasks, showCompletedTasks, currentProjectId, projects, kanbanColumns, createTask } = useTaskStore();
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+
+  // New task input state
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   // Row drag state
   const [rowDragState, setRowDragState] = useState<RowDragState | null>(null);
@@ -177,6 +180,23 @@ export function TodoView() {
 
   // Callbacks ref for EditingInput (to avoid re-renders)
   const editingCallbacksRef = useRef<EditingInputCallbacks>({ onSave: () => {}, onCancel: () => {} });
+
+  // Track Ctrl key state for copy on drag
+  const ctrlKeyRef = useRef(false);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   // Handle column resize start
   const handleResizeStart = useCallback((e: React.MouseEvent, columnId: string) => {
@@ -285,9 +305,33 @@ export function TodoView() {
     editingCallbacksRef.current = { onSave: saveEditing, onCancel: cancelEditing };
   }, [saveEditing, cancelEditing]);
 
+  // New task creation handler
+  const handleCreateNewTask = useCallback(() => {
+    const title = newTaskTitle.trim();
+    if (!title) return;
+
+    const taskData = {
+      projectId: currentProjectId || undefined,
+      title,
+      status: 'todo' as const,
+      priority: 2 as const,
+      progress: 0,
+    };
+
+    createTask(taskData);
+    setNewTaskTitle('');
+  }, [newTaskTitle, currentProjectId, createTask]);
+
+  const handleNewTaskKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleCreateNewTask();
+    }
+  }, [handleCreateNewTask]);
+
   // Row drag handlers
   const handleRowDragStart = useCallback((e: React.DragEvent, taskId: string, index: number) => {
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copyMove';
     e.dataTransfer.setData('text/plain', taskId);
     setRowDragState({
       taskId,
@@ -306,13 +350,38 @@ export function TodoView() {
     if (!rowDragState) return;
 
     const { initialIndex, currentIndex } = rowDragState;
+    const draggedTask = sortedTasks[initialIndex];
+
+    // Ctrl+ドラッグで複製
+    if (ctrlKeyRef.current && draggedTask) {
+      const duplicateData = {
+        projectId: draggedTask.projectId || undefined,
+        title: draggedTask.title,
+        description: draggedTask.description || undefined,
+        status: draggedTask.status,
+        priority: draggedTask.priority,
+        dueDate: draggedTask.dueDate || undefined,
+        startDate: draggedTask.startDate || undefined,
+        assignee: draggedTask.assignee || undefined,
+        estimatedHours: draggedTask.estimatedHours || undefined,
+        progress: 0, // 進捗は0にリセット
+      };
+      // ドロップ位置の直前のタスクIDを取得（その後ろに挿入）
+      const targetTask = sortedTasks[currentIndex];
+      const insertAfterTaskId = currentIndex > 0
+        ? (initialIndex < currentIndex ? targetTask?.id : sortedTasks[currentIndex - 1]?.id)
+        : undefined;
+      createTask(duplicateData, undefined, insertAfterTaskId || draggedTask.id);
+      setRowDragState(null);
+      return;
+    }
+
     if (initialIndex !== currentIndex) {
       // Get all tasks sorted by sortOrder (not just filtered/sorted display tasks)
       const allTasksSorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
       const allTaskIds = allTasksSorted.map(t => t.id);
 
       // Get the dragged task and target task from the displayed list
-      const draggedTask = sortedTasks[initialIndex];
       const targetTask = sortedTasks[currentIndex];
 
       // Find positions in the global list
@@ -337,15 +406,8 @@ export function TodoView() {
     }
 
     setRowDragState(null);
-  }, [rowDragState, sortedTasks, tasks, reorderTasks]);
+  }, [rowDragState, sortedTasks, tasks, reorderTasks, createTask]);
 
-  if (sortedTasks.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground text-base">{t('message.noTasks')}</p>
-      </div>
-    );
-  }
 
   // Resizable column header component with border
   const ResizableHeader = ({ columnId, children }: { columnId: string; children: React.ReactNode }) => (
@@ -409,6 +471,7 @@ export function TodoView() {
   // Status select cell
   const StatusCell = ({ task, style }: { task: Task; style?: React.CSSProperties }) => {
     const isEditing = editingCell?.taskId === task.id && editingCell?.field === 'status';
+    const currentColumn = kanbanColumns.find(col => col.id === task.status);
 
     if (isEditing) {
       return (
@@ -424,10 +487,14 @@ export function TodoView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todo">{t('status.todo')}</SelectItem>
-              <SelectItem value="in_progress">{t('status.inProgress')}</SelectItem>
-              <SelectItem value="on_hold">{t('status.onHold')}</SelectItem>
-              <SelectItem value="done">{t('status.done')}</SelectItem>
+              {kanbanColumns.map((column) => (
+                <SelectItem key={column.id} value={column.id}>
+                  <span className="flex items-center gap-2">
+                    <span className={cn('w-2 h-2 rounded-full', column.color)} />
+                    {column.name}
+                  </span>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </td>
@@ -441,11 +508,9 @@ export function TodoView() {
         onClick={(e) => startEditing(task.id, 'status', task.status, e.currentTarget)}
         title={t('action.edit')}
       >
-        <span className={cn('text-sm', STATUS_COLORS[task.status])}>
-          {task.status === 'todo' && t('status.todo')}
-          {task.status === 'in_progress' && t('status.inProgress')}
-          {task.status === 'on_hold' && t('status.onHold')}
-          {task.status === 'done' && t('status.done')}
+        <span className="flex items-center gap-2 text-sm">
+          <span className={cn('w-2 h-2 rounded-full', currentColumn?.color || 'bg-gray-500')} />
+          {currentColumn?.name || task.status}
         </span>
       </td>
     );
@@ -530,7 +595,7 @@ export function TodoView() {
 
                 {/* Status Flag */}
                 <td className="p-3">
-                  <Flag className={cn('h-5 w-5', STATUS_COLORS[task.status])} />
+                  <Flag className="h-5 w-5" style={{ color: getHexColor(kanbanColumns.find(col => col.id === task.status)?.color || 'bg-gray-500') }} />
                 </td>
 
                 {/* Title */}
@@ -650,6 +715,31 @@ export function TodoView() {
               </tr>
             );
           })}
+          {/* New task input row */}
+          <tr className="border-b border-border hover:bg-muted/50">
+            <td className="p-2"></td>
+            <td className="p-3"></td>
+            <td className="p-3"></td>
+            <td className="p-3" style={{ width: columnWidths.title }}>
+              <input
+                type="text"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={handleNewTaskKeyDown}
+                onBlur={handleCreateNewTask}
+                placeholder={t('task.newTaskPlaceholder')}
+                className="w-full bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground"
+              />
+            </td>
+            {showProjectColumn && <td className="p-3" style={{ width: columnWidths.project }}></td>}
+            <td className="p-3" style={{ width: columnWidths.description }}></td>
+            <td className="p-3" style={{ width: columnWidths.status }}></td>
+            <td className="p-3" style={{ width: columnWidths.startDate }}></td>
+            <td className="p-3" style={{ width: columnWidths.dueDate }}></td>
+            <td className="p-3" style={{ width: columnWidths.assignee }}></td>
+            <td className="p-3" style={{ width: columnWidths.progress }}></td>
+            <td className="p-3"></td>
+          </tr>
         </tbody>
       </table>
 

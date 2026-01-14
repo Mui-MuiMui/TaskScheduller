@@ -43,7 +43,7 @@ interface ColumnData {
 
 export function GanttView() {
   const { t, locale } = useI18n();
-  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks, currentProjectId, projects, reorderTasks, kanbanColumns } = useTaskStore();
+  const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks, currentProjectId, projects, reorderTasks, kanbanColumns, createTask } = useTaskStore();
 
   // Helper function to get column color for a task status
   const getColumnColor = useCallback((status: string): string => {
@@ -68,6 +68,23 @@ export function GanttView() {
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setIsEditDialogOpen(true);
+  }, []);
+
+  // Track Ctrl key state for copy on drag
+  const ctrlKeyRef = useRef(false);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
   // Track container width for responsive sizing
@@ -394,7 +411,7 @@ export function GanttView() {
 
   // Row drag handlers for reordering tasks
   const handleRowDragStart = useCallback((e: React.DragEvent, taskId: string, index: number) => {
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = 'copyMove';
     e.dataTransfer.setData('text/plain', taskId);
     setRowDragState({
       taskId,
@@ -413,13 +430,38 @@ export function GanttView() {
     if (!rowDragState) return;
 
     const { initialIndex, currentIndex } = rowDragState;
+    const draggedTask = tasksWithDates[initialIndex];
+
+    // Ctrl+ドラッグで複製
+    if (ctrlKeyRef.current && draggedTask) {
+      const duplicateData = {
+        projectId: draggedTask.projectId || undefined,
+        title: draggedTask.title,
+        description: draggedTask.description || undefined,
+        status: draggedTask.status,
+        priority: draggedTask.priority,
+        dueDate: draggedTask.dueDate || undefined,
+        startDate: draggedTask.startDate || undefined,
+        assignee: draggedTask.assignee || undefined,
+        estimatedHours: draggedTask.estimatedHours || undefined,
+        progress: 0, // 進捗は0にリセット
+      };
+      // ドロップ位置の直前のタスクIDを取得（その後ろに挿入）
+      const targetTask = tasksWithDates[currentIndex];
+      const insertAfterTaskId = currentIndex > 0
+        ? (initialIndex < currentIndex ? targetTask?.id : tasksWithDates[currentIndex - 1]?.id)
+        : undefined;
+      createTask(duplicateData, undefined, insertAfterTaskId || draggedTask.id);
+      setRowDragState(null);
+      return;
+    }
+
     if (initialIndex !== currentIndex) {
       // Get all tasks sorted by sortOrder (not just tasksWithDates)
       const allTasksSorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
       const allTaskIds = allTasksSorted.map(t => t.id);
 
       // Get the dragged task
-      const draggedTask = tasksWithDates[initialIndex];
       const targetTask = tasksWithDates[currentIndex];
 
       // Find positions in the global list
@@ -448,7 +490,7 @@ export function GanttView() {
     }
 
     setRowDragState(null);
-  }, [rowDragState, tasksWithDates, tasks, reorderTasks]);
+  }, [rowDragState, tasksWithDates, tasks, reorderTasks, createTask]);
 
   // Calculate dependency arrow paths
   // Use taller rows in All Tasks mode to accommodate project indicator

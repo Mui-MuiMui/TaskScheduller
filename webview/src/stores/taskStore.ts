@@ -28,6 +28,9 @@ interface TaskState {
   currentProjectId: string | null;
   showCompletedTasks: boolean;
 
+  // Pending duplicate insert info (for Ctrl+drag duplicate)
+  pendingDuplicateInsert: { insertAfterTaskId: string } | null;
+
   // Config
   locale: string;
   theme: 'light' | 'dark' | 'high-contrast';
@@ -58,7 +61,7 @@ interface TaskState {
 
   // Actions - API calls (send to extension)
   loadTasks: () => void;
-  createTask: (dto: CreateTaskDto, predecessorIds?: string[]) => void;
+  createTask: (dto: CreateTaskDto, predecessorIds?: string[], insertAfterTaskId?: string) => void;
   updateTaskApi: (taskId: string, updates: UpdateTaskDto) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   deleteTask: (taskId: string) => void;
@@ -95,6 +98,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   error: null,
   currentProjectId: null,
   showCompletedTasks: true,
+  pendingDuplicateInsert: null,
   locale: 'en',
   theme: 'dark',
 
@@ -157,7 +161,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     postMessage({ type: 'LOAD_TASKS', payload: { filter: projectId ? { projectId } : undefined } });
   },
 
-  createTask: (dto, predecessorIds) => {
+  createTask: (dto, predecessorIds, insertAfterTaskId) => {
+    if (insertAfterTaskId) {
+      set({ pendingDuplicateInsert: { insertAfterTaskId } });
+    }
     postMessage({ type: 'CREATE_TASK', payload: { ...dto, predecessorIds } });
   },
 
@@ -273,6 +280,37 @@ export function initializeMessageHandler() {
       case 'TASK_CREATED':
         const createdPayload = message as { payload: { task: Task } };
         addTask(createdPayload.payload.task);
+
+        // Handle pending duplicate insert (Ctrl+drag duplicate)
+        const pendingInsert = useTaskStore.getState().pendingDuplicateInsert;
+        if (pendingInsert) {
+          const currentTasks = useTaskStore.getState().tasks;
+          const allTasksSorted = [...currentTasks].sort((a, b) => a.sortOrder - b.sortOrder);
+          const allTaskIds = allTasksSorted.map(t => t.id);
+
+          // Find insert position
+          const insertAfterIndex = allTaskIds.indexOf(pendingInsert.insertAfterTaskId);
+          const newTaskId = createdPayload.payload.task.id;
+
+          // Remove new task from its current position (at the end)
+          const currentIndex = allTaskIds.indexOf(newTaskId);
+          if (currentIndex !== -1) {
+            allTaskIds.splice(currentIndex, 1);
+          }
+
+          // Insert after the target task
+          if (insertAfterIndex !== -1) {
+            allTaskIds.splice(insertAfterIndex + 1, 0, newTaskId);
+          } else {
+            allTaskIds.push(newTaskId);
+          }
+
+          // Reorder tasks
+          postMessage({ type: 'REORDER_TASKS', payload: { taskIds: allTaskIds } });
+
+          // Clear pending state
+          useTaskStore.setState({ pendingDuplicateInsert: null });
+        }
         break;
 
       case 'TASK_UPDATED':

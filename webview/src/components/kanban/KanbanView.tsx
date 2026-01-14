@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Plus } from 'lucide-react';
 import { useTaskStore } from '@/stores/taskStore';
@@ -18,7 +18,25 @@ export function KanbanView() {
     updateTaskStatus,
     showCompletedTasks,
     reorderKanbanColumns,
+    createTask,
   } = useTaskStore();
+
+  // Track Ctrl key state for copy on drag
+  const ctrlKeyRef = useRef(false);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlKeyRef.current = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
@@ -55,6 +73,35 @@ export function KanbanView() {
       const allColumnIds = [...newColumnIds, ...hiddenColumns.map(c => c.id)];
 
       reorderKanbanColumns(allColumnIds);
+      return;
+    }
+
+    // Ctrl+ドラッグで複製
+    if (ctrlKeyRef.current) {
+      const draggedTask = tasks.find(t => t.id === draggableId);
+      if (draggedTask) {
+        const destStatus = destination.droppableId as TaskStatus;
+        const duplicateData = {
+          projectId: draggedTask.projectId || undefined,
+          title: draggedTask.title,
+          description: draggedTask.description || undefined,
+          status: destStatus,
+          priority: draggedTask.priority,
+          dueDate: draggedTask.dueDate || undefined,
+          startDate: draggedTask.startDate || undefined,
+          assignee: draggedTask.assignee || undefined,
+          estimatedHours: draggedTask.estimatedHours || undefined,
+          progress: 0, // 進捗は0にリセット
+        };
+        // ドロップ位置の直前のタスクIDを取得
+        const destColumnTasks = tasks
+          .filter(t => t.status === destStatus)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        const insertAfterTaskId = destination.index > 0
+          ? destColumnTasks[destination.index - 1]?.id
+          : (destColumnTasks.length > 0 ? undefined : draggedTask.id);
+        createTask(duplicateData, undefined, insertAfterTaskId || draggedTask.id);
+      }
       return;
     }
 
