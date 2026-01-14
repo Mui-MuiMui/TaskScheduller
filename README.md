@@ -1,6 +1,6 @@
 # TaskScheduller
 
-[日本語版 README はこちら](README_ja.md)
+[日本語版 README はこちら](./README_ja.md)
 
 A VSCode extension for task management with Todo list, Kanban board, and Gantt chart views.
 
