@@ -3,7 +3,7 @@ import type { Task } from '@/types';
 import { Card, CardContent, Badge, Progress } from '@/components/ui';
 import { Calendar, User, Clock, Flag, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { STATUS_COLORS } from '@/types';
+import { getHexColor } from '@/types';
 import { useTaskStore } from '@/stores/taskStore';
 
 interface TaskCardProps {
@@ -13,7 +13,7 @@ interface TaskCardProps {
 }
 
 export const TaskCard = memo(function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
-  const { currentProjectId, projects } = useTaskStore();
+  const { currentProjectId, projects, kanbanColumns } = useTaskStore();
 
   // Get project info for this task (only shown in All Tasks mode)
   const projectInfo = useMemo(() => {
@@ -48,7 +48,7 @@ export const TaskCard = memo(function TaskCard({ task, onClick, isDragging }: Ta
         {/* Title and Status */}
         <div className="flex items-start justify-between gap-2">
           <span className="text-base font-medium leading-tight">{task.title}</span>
-          <Flag className={cn('h-4 w-4 shrink-0', STATUS_COLORS[task.status])} />
+          <Flag className="h-4 w-4 shrink-0" style={{ color: getHexColor(kanbanColumns.find(col => col.id === task.status)?.color || 'bg-gray-500') }} />
         </div>
 
         {/* Project indicator (only in All Tasks mode) */}

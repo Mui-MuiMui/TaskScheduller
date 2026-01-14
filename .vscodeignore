@@ -18,3 +18,4 @@ coverage/**
 *.vsix
 .git/**
 doc/**
+tmpclaude*cwd

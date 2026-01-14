@@ -7,7 +7,7 @@ import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 import { Flag, Trash2, FolderOpen, GripVertical, Check, X, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/types';
-import { STATUS_COLORS } from '@/types';
+import { getHexColor } from '@/types';
 
 // Column configuration with resizable widths
 interface ColumnConfig {
@@ -154,7 +154,7 @@ const EditingInput = React.memo(function EditingInput({
 
 export function TodoView() {
   const { t, locale } = useI18n();
-  const { tasks, updateTaskStatus, updateTaskApi, deleteTask, reorderTasks, showCompletedTasks, currentProjectId, projects } = useTaskStore();
+  const { tasks, updateTaskStatus, updateTaskApi, deleteTask, reorderTasks, showCompletedTasks, currentProjectId, projects, kanbanColumns } = useTaskStore();
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -409,6 +409,7 @@ export function TodoView() {
   // Status select cell
   const StatusCell = ({ task, style }: { task: Task; style?: React.CSSProperties }) => {
     const isEditing = editingCell?.taskId === task.id && editingCell?.field === 'status';
+    const currentColumn = kanbanColumns.find(col => col.id === task.status);
 
     if (isEditing) {
       return (
@@ -424,10 +425,14 @@ export function TodoView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todo">{t('status.todo')}</SelectItem>
-              <SelectItem value="in_progress">{t('status.inProgress')}</SelectItem>
-              <SelectItem value="on_hold">{t('status.onHold')}</SelectItem>
-              <SelectItem value="done">{t('status.done')}</SelectItem>
+              {kanbanColumns.map((column) => (
+                <SelectItem key={column.id} value={column.id}>
+                  <span className="flex items-center gap-2">
+                    <span className={cn('w-2 h-2 rounded-full', column.color)} />
+                    {column.name}
+                  </span>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </td>
@@ -441,11 +446,9 @@ export function TodoView() {
         onClick={(e) => startEditing(task.id, 'status', task.status, e.currentTarget)}
         title={t('action.edit')}
       >
-        <span className={cn('text-sm', STATUS_COLORS[task.status])}>
-          {task.status === 'todo' && t('status.todo')}
-          {task.status === 'in_progress' && t('status.inProgress')}
-          {task.status === 'on_hold' && t('status.onHold')}
-          {task.status === 'done' && t('status.done')}
+        <span className="flex items-center gap-2 text-sm">
+          <span className={cn('w-2 h-2 rounded-full', currentColumn?.color || 'bg-gray-500')} />
+          {currentColumn?.name || task.status}
         </span>
       </td>
     );
@@ -530,7 +533,7 @@ export function TodoView() {
 
                 {/* Status Flag */}
                 <td className="p-3">
-                  <Flag className={cn('h-5 w-5', STATUS_COLORS[task.status])} />
+                  <Flag className="h-5 w-5" style={{ color: getHexColor(kanbanColumns.find(col => col.id === task.status)?.color || 'bg-gray-500') }} />
                 </td>
 
                 {/* Title */}
