@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
-import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui';
 import { Flag, Trash2, FolderOpen, GripVertical, Check, X, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/types';
@@ -423,6 +423,32 @@ export function TodoView() {
     </th>
   );
 
+  // Component that shows tooltip only when text is truncated
+  const TruncatedText = ({ text, children, className }: { text: string; children: React.ReactNode; className?: string }) => {
+    const textRef = useRef<HTMLSpanElement>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    useEffect(() => {
+      const el = textRef.current;
+      if (el) {
+        setIsTruncated(el.scrollWidth > el.clientWidth);
+      }
+    }, [text]);
+
+    if (isTruncated) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span ref={textRef} className={cn('block truncate', className)}>{children}</span>
+          </TooltipTrigger>
+          <TooltipContent>{text}</TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return <span ref={textRef} className={cn('block truncate', className)}>{children}</span>;
+  };
+
   // Editable cell component
   const EditableCell = ({
     taskId,
@@ -432,6 +458,7 @@ export function TodoView() {
     className,
     style,
     type = 'text',
+    tooltip,
   }: {
     taskId: string;
     field: EditingCell['field'];
@@ -440,8 +467,11 @@ export function TodoView() {
     className?: string;
     style?: React.CSSProperties;
     type?: 'text' | 'date' | 'number';
+    tooltip?: string;
   }) => {
     const isEditing = editingCell?.taskId === taskId && editingCell?.field === field;
+    const tooltipText = tooltip || value || '';
+    const content = displayValue ?? (value || '-');
 
     return (
       <>
@@ -449,9 +479,8 @@ export function TodoView() {
           className={cn('p-3 truncate cursor-pointer hover:bg-muted/30', className)}
           style={style}
           onClick={(e) => startEditing(taskId, field, value, e.currentTarget)}
-          title={t('action.edit')}
         >
-          {displayValue ?? (value || '-')}
+          <TruncatedText text={tooltipText}>{content}</TruncatedText>
         </td>
         {isEditing && (
           <EditingInput
@@ -490,7 +519,7 @@ export function TodoView() {
               {kanbanColumns.map((column) => (
                 <SelectItem key={column.id} value={column.id}>
                   <span className="flex items-center gap-2">
-                    <span className={cn('w-2 h-2 rounded-full', column.color)} />
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getHexColor(column.color) }} />
                     {column.name}
                   </span>
                 </SelectItem>
@@ -501,17 +530,17 @@ export function TodoView() {
       );
     }
 
+    const statusText = currentColumn?.name || task.status;
     return (
       <td
         className="p-3 truncate cursor-pointer hover:bg-muted/30"
         style={style}
         onClick={(e) => startEditing(task.id, 'status', task.status, e.currentTarget)}
-        title={t('action.edit')}
       >
-        <span className="flex items-center gap-2 text-sm">
-          <span className={cn('w-2 h-2 rounded-full', currentColumn?.color || 'bg-gray-500')} />
-          {currentColumn?.name || task.status}
-        </span>
+        <TruncatedText text={statusText} className="flex items-center gap-2 text-sm">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getHexColor(currentColumn?.color || 'bg-gray-500') }} />
+          <span className="truncate">{statusText}</span>
+        </TruncatedText>
       </td>
     );
   };
@@ -615,7 +644,7 @@ export function TodoView() {
                 {showProjectColumn && (
                   <td className="p-3 truncate" style={{ width: columnWidths.project }}>
                     {projectInfo ? (
-                      <div className="flex items-center gap-1 text-xs">
+                      <TruncatedText text={projectInfo.name} className="flex items-center gap-1 text-xs">
                         <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
                         <span
                           className="px-1.5 py-0.5 rounded truncate"
@@ -623,7 +652,7 @@ export function TodoView() {
                         >
                           {projectInfo.name}
                         </span>
-                      </div>
+                      </TruncatedText>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}

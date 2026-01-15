@@ -1,7 +1,7 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
-import { Button } from '@/components/ui';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui';
 import { ChevronLeft, ChevronRight, Link2, X, FolderOpen, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
@@ -41,6 +41,49 @@ interface ColumnData {
   isCurrentPeriod: boolean;
 }
 
+// Component that shows tooltip only when text is truncated or has description
+const TruncatedTaskInfo = React.memo(function TruncatedTaskInfo({
+  task,
+  children,
+  className
+}: {
+  task: Task;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el) {
+      // Check if any text is truncated
+      const titleEl = el.querySelector('.truncate');
+      if (titleEl) {
+        setIsTruncated(titleEl.scrollWidth > titleEl.clientWidth || !!task.description);
+      }
+    }
+  }, [task.title, task.description]);
+
+  const showTooltip = isTruncated || !!task.description;
+
+  if (showTooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div ref={containerRef} className={className}>{children}</div>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <div className="font-medium">{task.title}</div>
+          {task.description && <div className="text-muted-foreground mt-1">{task.description}</div>}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return <div ref={containerRef} className={className}>{children}</div>;
+});
+
 export function GanttView() {
   const { t, locale } = useI18n();
   const { tasks, dependencies, updateTaskApi, createDependency, deleteDependency, showCompletedTasks, currentProjectId, projects, reorderTasks, kanbanColumns, createTask } = useTaskStore();
@@ -64,6 +107,22 @@ export function GanttView() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionState | null>(null);
   const chartAreaRef = useRef<HTMLDivElement>(null);
+
+  // Task column width (resizable) - load from localStorage
+  const TASK_COLUMN_MIN_WIDTH = 150;
+  const TASK_COLUMN_DEFAULT_WIDTH = 220;
+  const TASK_COLUMN_MAX_WIDTH = 400;
+  const [taskColumnWidth, setTaskColumnWidth] = useState(() => {
+    const saved = localStorage.getItem('gantt-task-column-width');
+    if (saved) {
+      const width = parseInt(saved, 10);
+      if (!isNaN(width) && width >= TASK_COLUMN_MIN_WIDTH && width <= TASK_COLUMN_MAX_WIDTH) {
+        return width;
+      }
+    }
+    return TASK_COLUMN_DEFAULT_WIDTH;
+  });
+  const columnResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
@@ -91,14 +150,41 @@ export function GanttView() {
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth - 220);
+        setContainerWidth(containerRef.current.clientWidth - taskColumnWidth);
       }
     };
 
     updateWidth();
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
-  }, []);
+  }, [taskColumnWidth]);
+
+  // Handle column resize
+  const handleColumnResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    columnResizeRef.current = { startX: e.clientX, startWidth: taskColumnWidth };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!columnResizeRef.current) return;
+      const delta = moveEvent.clientX - columnResizeRef.current.startX;
+      const newWidth = Math.min(TASK_COLUMN_MAX_WIDTH, Math.max(TASK_COLUMN_MIN_WIDTH, columnResizeRef.current.startWidth + delta));
+      setTaskColumnWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (columnResizeRef.current) {
+        // Save to localStorage
+        const currentWidth = Math.min(TASK_COLUMN_MAX_WIDTH, Math.max(TASK_COLUMN_MIN_WIDTH, taskColumnWidth));
+        localStorage.setItem('gantt-task-column-width', String(currentWidth));
+      }
+      columnResizeRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [taskColumnWidth]);
 
   // Filter tasks with dates
   const filteredByCompletion = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
@@ -698,8 +784,16 @@ export function GanttView() {
         <div className="min-w-[600px]">
           {/* Header row */}
           <div className="flex border-b border-border sticky top-0 bg-background z-20">
-            <div className="w-[220px] shrink-0 p-2 border-r border-border text-sm font-medium flex items-center sticky left-0 bg-background z-10">
+            <div
+              className="shrink-0 p-2 border-r border-border text-sm font-medium flex items-center sticky left-0 bg-background z-10 select-none"
+              style={{ width: taskColumnWidth }}
+            >
               {t('task.task')}
+              {/* Resize handle */}
+              <div
+                className="absolute right-0 top-0 bottom-0 w-2 -mr-1 cursor-col-resize hover:bg-primary/50 active:bg-primary z-20"
+                onMouseDown={handleColumnResizeStart}
+              />
             </div>
             <div className="flex-1 flex">
               {columns.map((col, idx) => {
@@ -735,8 +829,9 @@ export function GanttView() {
           <div ref={chartAreaRef} className="relative">
             {/* SVG overlay for dependency arrows */}
             <svg
-              className="absolute top-0 left-[220px] pointer-events-none z-10"
+              className="absolute top-0 pointer-events-none z-10"
               style={{
+                left: taskColumnWidth,
                 width: totalChartWidth,
                 height: tasksWithDates.length * rowHeight,
               }}
@@ -813,46 +908,47 @@ export function GanttView() {
                     }
                   }}
                 >
-                  <div className="w-[220px] shrink-0 p-3 border-r border-border flex items-center gap-2 sticky left-0 bg-background z-[5]" style={{ height: rowHeight }}>
+                  <div className="shrink-0 p-3 border-r border-border flex items-center gap-2 sticky left-0 bg-background z-[5]" style={{ width: taskColumnWidth, height: rowHeight }}>
                     {/* Drag handle */}
                     <div className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
                       <GripVertical className="h-4 w-4" />
                     </div>
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
-                      onDoubleClick={(e) => {
-                        if (!connectionState) {
-                          e.stopPropagation();
-                          handleEditTask(task);
-                        }
-                      }}
-                      title={t('action.edit')}
-                    >
-                      {/* Title */}
-                      <div className="text-sm font-medium truncate">{task.title}</div>
-                      {/* Project indicator in All Tasks mode */}
-                      {currentProjectId === null && task.projectId && (() => {
-                        const projectInfo = projects.find(p => p.id === task.projectId);
-                        if (!projectInfo) return null;
-                        return (
-                          <div className="flex items-center gap-0.5 text-xs truncate">
-                            <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
-                            <span
-                              className="px-1 py-0 rounded truncate"
-                              style={{ backgroundColor: projectInfo.color + '20', color: projectInfo.color }}
-                            >
-                              {projectInfo.name}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                      {/* Date range */}
-                      <div className="text-xs text-muted-foreground truncate">
-                        {task.startDate && new Date(task.startDate).toLocaleDateString()}
-                        {task.startDate && task.dueDate && ' - '}
-                        {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
+                    <TruncatedTaskInfo task={task} className="flex-1 min-w-0">
+                      <div
+                        className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+                        onDoubleClick={(e) => {
+                          if (!connectionState) {
+                            e.stopPropagation();
+                            handleEditTask(task);
+                          }
+                        }}
+                      >
+                        {/* Title */}
+                        <div className="text-sm font-medium truncate">{task.title}</div>
+                        {/* Project indicator in All Tasks mode */}
+                        {currentProjectId === null && task.projectId && (() => {
+                          const projectInfo = projects.find(p => p.id === task.projectId);
+                          if (!projectInfo) return null;
+                          return (
+                            <div className="flex items-center gap-0.5 text-xs truncate">
+                              <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
+                              <span
+                                className="px-1 py-0 rounded truncate"
+                                style={{ backgroundColor: projectInfo.color + '20', color: projectInfo.color }}
+                              >
+                                {projectInfo.name}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        {/* Date range */}
+                        <div className="text-xs text-muted-foreground truncate">
+                          {task.startDate && new Date(task.startDate).toLocaleDateString()}
+                          {task.startDate && task.dueDate && ' - '}
+                          {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
+                        </div>
                       </div>
-                    </div>
+                    </TruncatedTaskInfo>
                     {/* Connect button - always visible */}
                     {!connectionState && (
                       <button

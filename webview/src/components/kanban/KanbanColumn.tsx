@@ -3,6 +3,7 @@ import type { DroppableProvided, DraggableProvidedDragHandleProps } from '@hello
 import { Draggable } from '@hello-pangea/dnd';
 import { GripVertical, Settings } from 'lucide-react';
 import type { Task, KanbanColumn as KanbanColumnType } from '@/types';
+import { getHexColor } from '@/types';
 import { KanbanCard } from './KanbanCard';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -40,7 +41,7 @@ export const KanbanColumn = memo(function KanbanColumn({
         <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
-        <div className={cn('w-3 h-3 rounded-full', column.color)} />
+        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getHexColor(column.color) }} />
         <span className="text-sm font-semibold flex-1">{column.name}</span>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
         <Button
