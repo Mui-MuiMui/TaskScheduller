@@ -66,13 +66,13 @@ export interface Dependency {
 export interface CreateTaskDto {
   projectId?: string;
   title: string;
-  description?: string;
+  description?: string | null;
   status?: TaskStatus;
   priority?: Priority;
-  dueDate?: string;
-  startDate?: string;
-  assignee?: string;
-  estimatedHours?: number;
+  dueDate?: string | null;
+  startDate?: string | null;
+  assignee?: string | null;
+  estimatedHours?: number | null;
   progress?: number;
   parentId?: string;
   labelIds?: string[];

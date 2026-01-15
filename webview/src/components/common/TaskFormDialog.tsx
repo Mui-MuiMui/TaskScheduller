@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
-import { PRIORITY_LABEL_KEYS } from '@/types';
+import { PRIORITY_LABEL_KEYS, getHexColor } from '@/types';
 import { X, Plus, Trash2, Copy } from 'lucide-react';
 
 interface TaskFormDialogProps {
@@ -120,7 +120,17 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
       finalDueDate = finalStartDate;
     }
 
-    const cleanedData = {
+    // 編集モードでは空文字列を明示的にnullとして送信し、DBの値をクリアできるようにする
+    // 新規作成時はundefinedでデフォルト値を使用
+    const cleanedData = isEditMode ? {
+      ...formData,
+      description: formData.description || null,
+      dueDate: finalDueDate || null,
+      startDate: finalStartDate || null,
+      assignee: formData.assignee || null,
+      estimatedHours: formData.estimatedHours || null,
+      progress: formData.progress ?? 0,
+    } : {
       ...formData,
       description: formData.description || undefined,
       dueDate: finalDueDate,
@@ -238,7 +248,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
           <div className="space-y-1">
             <label className="text-xs font-medium">{t('task.description')}</label>
             <Textarea
-              value={formData.description}
+              value={formData.description || ''}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder={t('task.description')}
               rows={3}
@@ -260,7 +270,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                   {kanbanColumns.map((column) => (
                     <SelectItem key={column.id} value={column.id}>
                       <span className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${column.color}`} />
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getHexColor(column.color) }} />
                         {column.name}
                       </span>
                     </SelectItem>
@@ -295,7 +305,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
               <label className="text-xs font-medium">{t('task.startDate')}</label>
               <Input
                 type="date"
-                value={formData.startDate}
+                value={formData.startDate || ''}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               />
             </div>
@@ -304,7 +314,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
               <label className="text-xs font-medium">{t('task.dueDate')}</label>
               <Input
                 type="date"
-                value={formData.dueDate}
+                value={formData.dueDate || ''}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               />
               {/* 日付の整合性警告 */}
@@ -319,7 +329,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
             <div className="space-y-1">
               <label className="text-xs font-medium">{t('task.assignee')}</label>
               <Input
-                value={formData.assignee}
+                value={formData.assignee || ''}
                 onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
                 placeholder={t('task.assignee')}
               />
@@ -330,7 +340,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
               <Input
                 type="number"
                 min="0"
-                step="0.5"
+                step="0.01"
                 value={formData.estimatedHours || ''}
                 onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="0"

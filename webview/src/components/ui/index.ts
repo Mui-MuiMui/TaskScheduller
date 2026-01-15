@@ -43,3 +43,4 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from './dropdown-menu';
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './tooltip';

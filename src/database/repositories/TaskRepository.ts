@@ -187,7 +187,7 @@ export class TaskRepository {
     }
     if (dto.description !== undefined) {
       updates.push('description = ?');
-      params.push(dto.description);
+      params.push(dto.description || null);
     }
     if (dto.status !== undefined) {
       updates.push('status = ?');
@@ -199,19 +199,19 @@ export class TaskRepository {
     }
     if (dto.dueDate !== undefined) {
       updates.push('due_date = ?');
-      params.push(dto.dueDate);
+      params.push(dto.dueDate || null);
     }
     if (dto.startDate !== undefined) {
       updates.push('start_date = ?');
-      params.push(dto.startDate);
+      params.push(dto.startDate || null);
     }
     if (dto.assignee !== undefined) {
       updates.push('assignee = ?');
-      params.push(dto.assignee);
+      params.push(dto.assignee || null);
     }
     if (dto.estimatedHours !== undefined) {
       updates.push('estimated_hours = ?');
-      params.push(dto.estimatedHours);
+      params.push(dto.estimatedHours || null);
     }
     if (dto.progress !== undefined) {
       updates.push('progress = ?');
