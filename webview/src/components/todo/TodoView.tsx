@@ -490,7 +490,7 @@ export function TodoView() {
               {kanbanColumns.map((column) => (
                 <SelectItem key={column.id} value={column.id}>
                   <span className="flex items-center gap-2">
-                    <span className={cn('w-2 h-2 rounded-full', column.color)} />
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getHexColor(column.color) }} />
                     {column.name}
                   </span>
                 </SelectItem>
@@ -509,7 +509,7 @@ export function TodoView() {
         title={t('action.edit')}
       >
         <span className="flex items-center gap-2 text-sm">
-          <span className={cn('w-2 h-2 rounded-full', currentColumn?.color || 'bg-gray-500')} />
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getHexColor(currentColumn?.color || 'bg-gray-500') }} />
           {currentColumn?.name || task.status}
         </span>
       </td>

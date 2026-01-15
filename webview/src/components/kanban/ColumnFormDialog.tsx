@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { KanbanColumn } from '@/types';
-import { COLUMN_PRESET_COLORS } from '@/types';
+import { COLUMN_PRESET_COLORS, getHexColor } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface ColumnFormDialogProps {
@@ -137,11 +137,11 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
                       type="button"
                       className={cn(
                         'w-8 h-8 rounded-full border-2 transition-all',
-                        preset.class,
                         color === preset.class
                           ? 'border-foreground scale-110'
                           : 'border-transparent hover:scale-105'
                       )}
+                      style={{ backgroundColor: getHexColor(preset.class) }}
                       onClick={() => setColor(preset.class)}
                       title={preset.label}
                     />
@@ -220,7 +220,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
                     {otherColumns.map((col) => (
                       <SelectItem key={col.id} value={col.id}>
                         <div className="flex items-center gap-2">
-                          <div className={cn('w-3 h-3 rounded-full', col.color)} />
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getHexColor(col.color) }} />
                           {col.name}
                         </div>
                       </SelectItem>
