@@ -16,6 +16,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  TooltipProvider,
 } from '@/components/ui';
 import { TodoView } from '@/components/todo/TodoView';
 import { KanbanView } from '@/components/kanban/KanbanView';
@@ -63,6 +64,7 @@ function App() {
   }
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="flex h-screen flex-col">
       <Tabs
         value={currentView}
@@ -155,6 +157,7 @@ function App() {
         onOpenChange={setIsCreateDialogOpen}
       />
     </div>
+    </TooltipProvider>
   );
 }
 

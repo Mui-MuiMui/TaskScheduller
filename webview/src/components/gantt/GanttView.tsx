@@ -1,7 +1,7 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
-import { Button } from '@/components/ui';
+import { Button, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui';
 import { ChevronLeft, ChevronRight, Link2, X, FolderOpen, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
@@ -40,6 +40,49 @@ interface ColumnData {
   endDate: Date;
   isCurrentPeriod: boolean;
 }
+
+// Component that shows tooltip only when text is truncated or has description
+const TruncatedTaskInfo = React.memo(function TruncatedTaskInfo({
+  task,
+  children,
+  className
+}: {
+  task: Task;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el) {
+      // Check if any text is truncated
+      const titleEl = el.querySelector('.truncate');
+      if (titleEl) {
+        setIsTruncated(titleEl.scrollWidth > titleEl.clientWidth || !!task.description);
+      }
+    }
+  }, [task.title, task.description]);
+
+  const showTooltip = isTruncated || !!task.description;
+
+  if (showTooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div ref={containerRef} className={className}>{children}</div>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <div className="font-medium">{task.title}</div>
+          {task.description && <div className="text-muted-foreground mt-1">{task.description}</div>}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return <div ref={containerRef} className={className}>{children}</div>;
+});
 
 export function GanttView() {
   const { t, locale } = useI18n();
@@ -818,41 +861,42 @@ export function GanttView() {
                     <div className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
                       <GripVertical className="h-4 w-4" />
                     </div>
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
-                      onDoubleClick={(e) => {
-                        if (!connectionState) {
-                          e.stopPropagation();
-                          handleEditTask(task);
-                        }
-                      }}
-                      title={t('action.edit')}
-                    >
-                      {/* Title */}
-                      <div className="text-sm font-medium truncate">{task.title}</div>
-                      {/* Project indicator in All Tasks mode */}
-                      {currentProjectId === null && task.projectId && (() => {
-                        const projectInfo = projects.find(p => p.id === task.projectId);
-                        if (!projectInfo) return null;
-                        return (
-                          <div className="flex items-center gap-0.5 text-xs truncate">
-                            <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
-                            <span
-                              className="px-1 py-0 rounded truncate"
-                              style={{ backgroundColor: projectInfo.color + '20', color: projectInfo.color }}
-                            >
-                              {projectInfo.name}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                      {/* Date range */}
-                      <div className="text-xs text-muted-foreground truncate">
-                        {task.startDate && new Date(task.startDate).toLocaleDateString()}
-                        {task.startDate && task.dueDate && ' - '}
-                        {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
+                    <TruncatedTaskInfo task={task} className="flex-1 min-w-0">
+                      <div
+                        className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+                        onDoubleClick={(e) => {
+                          if (!connectionState) {
+                            e.stopPropagation();
+                            handleEditTask(task);
+                          }
+                        }}
+                      >
+                        {/* Title */}
+                        <div className="text-sm font-medium truncate">{task.title}</div>
+                        {/* Project indicator in All Tasks mode */}
+                        {currentProjectId === null && task.projectId && (() => {
+                          const projectInfo = projects.find(p => p.id === task.projectId);
+                          if (!projectInfo) return null;
+                          return (
+                            <div className="flex items-center gap-0.5 text-xs truncate">
+                              <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
+                              <span
+                                className="px-1 py-0 rounded truncate"
+                                style={{ backgroundColor: projectInfo.color + '20', color: projectInfo.color }}
+                              >
+                                {projectInfo.name}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                        {/* Date range */}
+                        <div className="text-xs text-muted-foreground truncate">
+                          {task.startDate && new Date(task.startDate).toLocaleDateString()}
+                          {task.startDate && task.dueDate && ' - '}
+                          {task.dueDate && new Date(task.dueDate).toLocaleDateString()}
+                        </div>
                       </div>
-                    </div>
+                    </TruncatedTaskInfo>
                     {/* Connect button - always visible */}
                     {!connectionState && (
                       <button
