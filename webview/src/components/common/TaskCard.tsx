@@ -51,6 +51,11 @@ export const TaskCard = memo(function TaskCard({ task, onClick, isDragging }: Ta
           <Flag className="h-4 w-4 shrink-0" style={{ color: getHexColor(kanbanColumns.find(col => col.id === task.status)?.color || 'bg-gray-500') }} />
         </div>
 
+        {/* Description */}
+        {task.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap">{task.description}</p>
+        )}
+
         {/* Project indicator (only in All Tasks mode) */}
         {projectInfo && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
