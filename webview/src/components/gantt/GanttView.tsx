@@ -840,8 +840,9 @@ export function GanttView() {
             </div>
             <div className="flex-1 flex">
               {columns.map((col, idx) => {
-                const isWeekend = viewMode === 'day' &&
-                  (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+                const isSunday = viewMode === 'day' && col.startDate.getDay() === 0;
+                const isSaturday = viewMode === 'day' && col.startDate.getDay() === 6;
+                const isWeekend = isSunday || isSaturday;
                 const shouldHighlight = highlightToday && col.isCurrentPeriod;
 
                 return (
@@ -858,7 +859,8 @@ export function GanttView() {
                     {col.subLabel && (
                       <div className={cn(
                         'text-muted-foreground',
-                        isWeekend && 'text-red-400'
+                        isSunday && 'text-red-400',
+                        isSaturday && 'text-blue-400'
                       )}>
                         {col.subLabel}
                       </div>
@@ -1023,8 +1025,9 @@ export function GanttView() {
                     {/* Grid lines */}
                     <div className="absolute inset-0 flex">
                       {columns.map((col, index) => {
-                        const isWeekend = viewMode === 'day' &&
-                          (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+                        const isSunday = viewMode === 'day' && col.startDate.getDay() === 0;
+                        const isSaturday = viewMode === 'day' && col.startDate.getDay() === 6;
+                        const isWeekend = isSunday || isSaturday;
                         const shouldHighlight = highlightToday && col.isCurrentPeriod;
 
                         return (
