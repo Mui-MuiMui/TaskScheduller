@@ -4,25 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Development Commands
 
+**Note:** This project uses pnpm as the package manager.
+
 ```bash
 # Development (watch mode)
-npm run watch              # Watch both extension and webview concurrently
-npm run watch:extension    # Watch extension only
-npm run watch:webview      # Vite dev server for webview
+pnpm run watch              # Watch both extension and webview concurrently
+pnpm run watch:extension    # Watch extension only
+pnpm run watch:webview      # Vite dev server for webview
 
 # Build
-npm run build              # Build extension + webview + copy WASM
-npm run package            # Create .vsix for distribution
+pnpm run build              # Build extension + webview + copy WASM
+pnpm run package            # Create .vsix for distribution
 
 # Testing
-npm run test               # Run all Jest tests
-npm run test:unit          # Run unit tests only
-npm run test:e2e           # Run VSCode e2e tests
-npm run test:coverage      # Generate coverage report
+pnpm run test               # Run all Jest tests
+pnpm run test:unit          # Run unit tests only
+pnpm run test:e2e           # Run VSCode e2e tests
+pnpm run test:coverage      # Generate coverage report
 
 # Linting
-npm run lint               # Lint src/ and webview/src/
-npm run lint:fix           # Auto-fix linting issues
+pnpm run lint               # Lint src/ and webview/src/
+pnpm run lint:fix           # Auto-fix linting issues
 ```
 
 ## Architecture Overview

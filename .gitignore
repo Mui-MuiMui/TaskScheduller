@@ -2,6 +2,10 @@
 node_modules/
 webview/node_modules/
 
+# Package manager lock files (npm)
+package-lock.json
+webview/package-lock.json
+
 # Build outputs
 dist/
 out/
