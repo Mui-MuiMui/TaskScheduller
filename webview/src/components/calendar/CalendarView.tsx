@@ -182,6 +182,26 @@ export function CalendarView() {
     if (viewMode !== 'month' || !containerRef.current) return;
 
     const handleWheel = (e: WheelEvent) => {
+      // Check if the target is within a scrollable task area
+      const target = e.target as HTMLElement;
+      const taskArea = target.closest('.week-task-area') as HTMLElement | null;
+
+      if (taskArea) {
+        const scrollTop = taskArea.scrollTop;
+        const scrollHeight = taskArea.scrollHeight;
+        const clientHeight = taskArea.clientHeight;
+        const delta = e.deltaY;
+
+        // Check if task area can scroll in the intended direction
+        const canScrollDown = scrollTop < scrollHeight - clientHeight;
+        const canScrollUp = scrollTop > 0;
+
+        if ((delta > 0 && canScrollDown) || (delta < 0 && canScrollUp)) {
+          // Let the task area handle its own scrolling
+          return;
+        }
+      }
+
       e.preventDefault();
       const container = containerRef.current;
       if (!container) return;
@@ -686,7 +706,7 @@ export function CalendarView() {
                       })}
                     </div>
                     {/* Task bars */}
-                    <div className="relative overflow-y-auto" style={{ height: '118px' }}>
+                    <div className="relative overflow-y-auto week-task-area" style={{ height: '118px' }}>
                       {/* Background columns with month-based colors */}
                       <div className="absolute inset-0 grid grid-cols-7">
                         {week.days.map((date, colIdx) => {
