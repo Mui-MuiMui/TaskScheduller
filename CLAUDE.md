@@ -89,3 +89,20 @@ Flow:
 - **Repository Pattern:** Each entity has its own repository class
 - **VSCode Theme Integration:** Tailwind uses VSCode CSS variables (see `webview/src/index.css`)
 - **Localization:** i18n in `webview/src/i18n/`, VSCode l10n in `l10n/`
+
+## Working with AI (Claude Code)
+
+When collaborating with Claude Code on this project, follow these guidelines:
+
+### Decision Making
+- **Human instructions take priority** - Even if a request seems irrational or suboptimal, Claude should follow human instructions. The human has full context and final decision authority.
+
+### Testing Protocol
+- **Unit testing:** Claude performs unit tests and verifies basic functionality
+- **Integration testing:** Human performs integration tests to validate the complete system
+- **Commit approval:** Only create commits after human has performed integration tests and explicitly approves
+
+### Commit Guidelines
+- **Language:** All commit messages must be written in English
+- **Timing:** Commits are only made when human explicitly requests them after testing
+- **Format:** Follow conventional commit format with descriptive messages
