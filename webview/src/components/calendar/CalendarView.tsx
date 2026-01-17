@@ -19,15 +19,9 @@ interface TaskBar {
   row: number;
 }
 
-interface DragState {
-  task: Task;
-  originalStartDate: Date;
-  originalEndDate: Date;
-}
-
 export function CalendarView() {
   const { t, locale } = useI18n();
-  const { tasks, kanbanColumns, updateTaskApi } = useTaskStore();
+  const { tasks, kanbanColumns } = useTaskStore();
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const today = useMemo(() => {
     const now = new Date();
@@ -46,7 +40,6 @@ export function CalendarView() {
     return (saved === '0' || saved === '1') ? parseInt(saved) as WeekStartDay : 0;
   });
   const [showSettings, setShowSettings] = useState(false);
-  const [dragState, setDragState] = useState<DragState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const weekRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollUpdateTimeoutRef = useRef<number | null>(null);
@@ -423,44 +416,6 @@ export function CalendarView() {
     setIsCreateDialogOpen(true);
   };
 
-  // Drag and drop handlers
-  const handleTaskDragStart = (e: React.DragEvent, task: Task) => {
-    const taskStart = task.startDate ? new Date(task.startDate) : new Date(task.dueDate!);
-    const taskEnd = task.dueDate ? new Date(task.dueDate) : new Date(task.startDate!);
-
-    setDragState({
-      task,
-      originalStartDate: taskStart,
-      originalEndDate: taskEnd,
-    });
-
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', task.id);
-  };
-
-  const handleDateDrop = (e: React.DragEvent, targetDate: Date) => {
-    e.preventDefault();
-
-    if (!dragState) return;
-
-    const duration = dragState.originalEndDate.getTime() - dragState.originalStartDate.getTime();
-    const newStartDate = new Date(targetDate);
-    newStartDate.setHours(0, 0, 0, 0);
-    const newEndDate = new Date(newStartDate.getTime() + duration);
-
-    updateTaskApi(dragState.task.id, {
-      startDate: newStartDate.toISOString().split('T')[0],
-      dueDate: newEndDate.toISOString().split('T')[0],
-    });
-
-    setDragState(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
   // Format month/week label
   const formatLabel = () => {
     const year = displayMonth.getFullYear();
@@ -620,8 +575,6 @@ export function CalendarView() {
                       isWeekend && 'bg-muted/10'
                     )}
                     onClick={handleDateClick}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDateDrop(e, date)}
                   >
                     <div className={cn(
                       'text-lg font-bold',
@@ -692,8 +645,6 @@ export function CalendarView() {
                               isToday && 'bg-primary/30'
                             )}
                             onClick={handleDateClick}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDateDrop(e, date)}
                           >
                             <div className={cn(
                               'text-sm font-medium',
@@ -737,9 +688,7 @@ export function CalendarView() {
                           return (
                             <div
                               key={idx}
-                              draggable
-                              onDragStart={(e) => handleTaskDragStart(e, bar.task)}
-                              className="absolute px-1 py-0.5 text-xs rounded cursor-move hover:opacity-80 truncate"
+                              className="absolute px-1 py-0.5 text-xs rounded cursor-pointer hover:opacity-80 truncate"
                               style={{
                                 left: `${(localStartCol / 7) * 100}%`,
                                 width: `${(localSpan / 7) * 100}%`,
@@ -786,9 +735,7 @@ export function CalendarView() {
                   return (
                     <div
                       key={idx}
-                      draggable
-                      onDragStart={(e) => handleTaskDragStart(e, bar.task)}
-                      className="absolute px-2 py-1 text-sm rounded cursor-move hover:opacity-80 truncate"
+                      className="absolute px-2 py-1 text-sm rounded cursor-pointer hover:opacity-80 truncate"
                       style={{
                         left: `${(bar.startCol / 7) * 100}%`,
                         width: `${(bar.span / 7) * 100}%`,
