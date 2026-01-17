@@ -1,0 +1,5 @@
+/* Calendar container */
+.calendar-container {
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+}

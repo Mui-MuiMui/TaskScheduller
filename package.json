@@ -56,6 +56,11 @@
         "category": "TaskScheduller"
       },
       {
+        "command": "taskScheduller.switchToCalendar",
+        "title": "%command.switchToCalendar%",
+        "category": "TaskScheduller"
+      },
+      {
         "command": "taskScheduller.openProject",
         "title": "%command.openProject%",
         "category": "TaskScheduller"
@@ -98,7 +103,8 @@
           "enum": [
             "todo",
             "kanban",
-            "gantt"
+            "gantt",
+            "calendar"
           ],
           "description": "%config.defaultView%"
         }

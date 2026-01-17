@@ -2,6 +2,7 @@
   "view.todo": "Todo",
   "view.kanban": "Kanban",
   "view.gantt": "Gantt",
+  "view.calendar": "Calendar",
   "task.project": "Project",
   "task.selectProject": "Select project",
   "task.title": "Title",
@@ -79,5 +80,8 @@
   "filter.logic.or": "OR",
   "filter.field": "Field",
   "filter.value": "Value",
-  "filter.activeCount": "{0} filter(s) active"
+  "filter.activeCount": "{0} filter(s) active",
+  "calendar.month": "Month",
+  "calendar.week": "Week",
+  "calendar.today": "Today"
 }
