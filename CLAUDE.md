@@ -54,6 +54,7 @@ This is a VSCode extension with two distinct parts that communicate via message 
 - **API Bridge:** `api/vscode.ts` - wraps postMessage communication
 
 **Creating New UI Components:**
+- **Use shadcn/ui** - This project follows the shadcn/ui pattern for all UI components
 - Use Radix UI primitives from `components/ui/` (Button, Dialog, Select, etc.)
 - Style with Tailwind utility classes
 - Integrate VSCode theme variables (defined in `webview/src/index.css` using CSS custom properties)

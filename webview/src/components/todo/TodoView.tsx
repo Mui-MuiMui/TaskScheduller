@@ -58,16 +58,18 @@ const EditingInput = React.memo(function EditingInput({
   cellRect,
   inputRef,
   callbacksRef,
+  multiline = false,
 }: {
   type: 'text' | 'date' | 'number';
   defaultValue: string;
   saveTitle: string;
   cancelTitle: string;
   cellRect: DOMRect | null;
-  inputRef: React.MutableRefObject<HTMLInputElement | null>;
+  inputRef: React.MutableRefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   callbacksRef: React.RefObject<EditingInputCallbacks>;
+  multiline?: boolean;
 }) {
-  const localRef = useRef<HTMLInputElement>(null);
+  const localRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const didFocusRef = useRef(false);
 
   useEffect(() => {
@@ -77,19 +79,34 @@ const EditingInput = React.memo(function EditingInput({
       inputRef.current = el;
       requestAnimationFrame(() => {
         el.focus();
-        el.select();
+        if (el instanceof HTMLInputElement) {
+          el.select();
+        } else if (el instanceof HTMLTextAreaElement) {
+          el.setSelectionRange(0, el.value.length);
+        }
       });
     }
   }, [inputRef]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      callbacksRef.current?.onSave();
-    } else if (e.key === 'Escape') {
-      callbacksRef.current?.onCancel();
+    // For multiline (textarea), only save on Ctrl+Enter or Shift+Enter
+    if (multiline) {
+      if ((e.key === 'Enter' && (e.ctrlKey || e.shiftKey)) && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+        callbacksRef.current?.onSave();
+      } else if (e.key === 'Escape') {
+        callbacksRef.current?.onCancel();
+      }
+    } else {
+      // For single line input, save on Enter
+      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+        callbacksRef.current?.onSave();
+      } else if (e.key === 'Escape') {
+        callbacksRef.current?.onCancel();
+      }
     }
-  }, [callbacksRef]);
+  }, [callbacksRef, multiline]);
 
   const handleBlur = useCallback((e: React.FocusEvent) => {
     // Don't save if clicking on save/cancel buttons
@@ -110,10 +127,12 @@ const EditingInput = React.memo(function EditingInput({
 
   if (!cellRect) return null;
 
+  const baseInputClasses = "flex w-full rounded-md border border-border bg-input px-2 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
   // Render the input as a Portal to document.body for proper IME handling
   return createPortal(
     <div
-      className="fixed z-50 flex items-center gap-1 bg-background border border-border rounded-md shadow-lg p-1"
+      className="fixed z-50 flex items-start gap-1 bg-background border border-border rounded-md shadow-lg p-1"
       style={{
         top: cellRect.top,
         left: cellRect.left,
@@ -121,14 +140,25 @@ const EditingInput = React.memo(function EditingInput({
         minWidth: 200,
       }}
     >
-      <input
-        ref={localRef}
-        type={type}
-        defaultValue={defaultValue}
-        onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
-        className="flex h-7 w-full rounded-md border border-border bg-input px-2 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      />
+      {multiline ? (
+        <textarea
+          ref={localRef as React.MutableRefObject<HTMLTextAreaElement>}
+          defaultValue={defaultValue}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          rows={3}
+          className={`${baseInputClasses} resize-none`}
+        />
+      ) : (
+        <input
+          ref={localRef as React.MutableRefObject<HTMLInputElement>}
+          type={type}
+          defaultValue={defaultValue}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          className={`${baseInputClasses} h-7`}
+        />
+      )}
       <button
         type="button"
         data-editing-button
@@ -176,7 +206,7 @@ export function TodoView() {
   const resizingRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   // Ref for inline editing input (non-controlled for IME support)
-  const editInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   // Callbacks ref for EditingInput (to avoid re-renders)
   const editingCallbacksRef = useRef<EditingInputCallbacks>({ onSave: () => {}, onCancel: () => {} });
@@ -459,6 +489,7 @@ export function TodoView() {
     style,
     type = 'text',
     tooltip,
+    multiline = false,
   }: {
     taskId: string;
     field: EditingCell['field'];
@@ -468,6 +499,7 @@ export function TodoView() {
     style?: React.CSSProperties;
     type?: 'text' | 'date' | 'number';
     tooltip?: string;
+    multiline?: boolean;
   }) => {
     const isEditing = editingCell?.taskId === taskId && editingCell?.field === field;
     const tooltipText = tooltip || value || '';
@@ -491,6 +523,7 @@ export function TodoView() {
             cellRect={editingCell.cellRect}
             inputRef={editInputRef}
             callbacksRef={editingCallbacksRef}
+            multiline={multiline}
           />
         )}
       </>
@@ -670,6 +703,7 @@ export function TodoView() {
                     </span>
                   }
                   style={{ width: columnWidths.description }}
+                  multiline={true}
                 />
 
                 {/* Status */}
