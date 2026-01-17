@@ -16,7 +16,7 @@ export const TodoItem = memo(function TodoItem({ task, onEdit }: TodoItemProps) 
 
   // Get project info for this task (only shown in All Tasks mode)
   const projectInfo = useMemo(() => {
-    if (currentProjectId !== null || !task.projectId) return null;
+    if (currentProjectId !== null || !task.projectId) {return null;}
     return projects.find(p => p.id === task.projectId);
   }, [currentProjectId, task.projectId, projects]);
 

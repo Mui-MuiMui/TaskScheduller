@@ -7,7 +7,8 @@ import { KanbanColumn } from './KanbanColumn';
 import { ColumnFormDialog } from './ColumnFormDialog';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
 import { Button } from '@/components/ui/button';
-import type { Task, KanbanColumn as KanbanColumnType, TaskStatus } from '@/types';
+import type { Task, KanbanColumn as KanbanColumnType, TaskStatus, FilterState } from '@/types';
+import { createEmptyFilterState, evaluateFilter, loadFilterState } from '@/types';
 
 export function KanbanView() {
   const { t } = useI18n();
@@ -25,10 +26,10 @@ export function KanbanView() {
   const ctrlKeyRef = useRef(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Control') ctrlKeyRef.current = true;
+      if (e.key === 'Control') {ctrlKeyRef.current = true;}
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Control') ctrlKeyRef.current = false;
+      if (e.key === 'Control') {ctrlKeyRef.current = false;}
     };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -41,6 +42,16 @@ export function KanbanView() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [editingColumn, setEditingColumn] = useState<KanbanColumnType | undefined>(undefined);
+
+  // Filter state for each column (map of columnId -> FilterState)
+  const [columnFilters, setColumnFilters] = useState<Record<string, FilterState>>(() => {
+    const initialFilters: Record<string, FilterState> = {};
+    kanbanColumns.forEach(column => {
+      const saved = loadFilterState(`taskscheduller-filters-kanban-${column.id}`);
+      initialFilters[column.id] = saved || createEmptyFilterState();
+    });
+    return initialFilters;
+  });
 
   // Filter tasks based on showCompletedTasks
   const filteredTasks = showCompletedTasks
@@ -56,11 +67,11 @@ export function KanbanView() {
     const { destination, source, draggableId, type } = result;
 
     // Dropped outside
-    if (!destination) return;
+    if (!destination) {return;}
 
     // Column drag
     if (type === 'COLUMN') {
-      if (destination.index === source.index) return;
+      if (destination.index === source.index) {return;}
 
       // Use visibleColumns for reordering since that's what's being dragged
       const newColumnIds = Array.from(visibleColumns.map((c) => c.id));
@@ -184,8 +195,10 @@ export function KanbanView() {
               className="flex gap-2 h-full min-h-0 min-w-max"
             >
               {visibleColumns.map((column, index) => {
+                const filterState = columnFilters[column.id] || createEmptyFilterState();
                 const columnTasks = filteredTasks
                   .filter((t) => t.status === column.id)
+                  .filter((t) => evaluateFilter(t, filterState))
                   .sort((a, b) => a.sortOrder - b.sortOrder);
 
                 return (
@@ -207,6 +220,8 @@ export function KanbanView() {
                               isDragging={dragSnapshot.isDragging}
                               onEditTask={handleEditTask}
                               onEditColumn={handleEditColumn}
+                              filterState={filterState}
+                              onFilterChange={(value) => setColumnFilters(prev => ({ ...prev, [column.id]: value }))}
                             />
                           )}
                         </Droppable>

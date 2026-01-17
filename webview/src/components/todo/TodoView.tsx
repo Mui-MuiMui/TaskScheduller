@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
+import { FilterPopover } from '@/components/common/FilterPopover';
 import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tooltip, TooltipTrigger, TooltipContent, Input, Textarea, Button } from '@/components/ui';
 import { Flag, Trash2, FolderOpen, GripVertical, Check, X, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Task, TaskStatus } from '@/types';
-import { getHexColor } from '@/types';
+import type { Task, TaskStatus, FilterState } from '@/types';
+import { getHexColor, createEmptyFilterState, evaluateFilter, loadFilterState } from '@/types';
 
 // Column configuration with resizable widths
 interface ColumnConfig {
@@ -125,7 +126,7 @@ const EditingInput = React.memo(function EditingInput({
     callbacksRef.current?.onCancel();
   }, [callbacksRef]);
 
-  if (!cellRect) return null;
+  if (!cellRect) {return null;}
 
   // Render the input as a Portal to document.body for proper IME handling
   return createPortal(
@@ -204,6 +205,12 @@ export function TodoView() {
     defaultColumns.reduce((acc, col) => ({ ...acc, [col.id]: col.defaultWidth }), {})
   );
 
+  // Filter state - load from localStorage or create empty
+  const [filterState, setFilterState] = useState<FilterState>(() => {
+    const saved = loadFilterState('taskscheduller-filters-todo');
+    return saved || createEmptyFilterState();
+  });
+
   // Resizing state
   const resizingRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
@@ -217,10 +224,10 @@ export function TodoView() {
   const ctrlKeyRef = useRef(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Control') ctrlKeyRef.current = true;
+      if (e.key === 'Control') {ctrlKeyRef.current = true;}
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Control') ctrlKeyRef.current = false;
+      if (e.key === 'Control') {ctrlKeyRef.current = false;}
     };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -237,7 +244,7 @@ export function TodoView() {
     resizingRef.current = { columnId, startX: e.clientX, startWidth };
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!resizingRef.current) return;
+      if (!resizingRef.current) {return;}
       const { columnId: resizingColumnId, startX, startWidth: initialWidth } = resizingRef.current;
       const delta = moveEvent.clientX - startX;
       const minWidth = defaultColumns.find(c => c.id === resizingColumnId)?.minWidth || 60;
@@ -259,7 +266,11 @@ export function TodoView() {
   const showProjectColumn = currentProjectId === null;
 
   // Filter and sort tasks - use sortOrder only to match Gantt chart order
-  const filtered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+  const completionFiltered = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
+
+  // Apply filters using evaluateFilter utility
+  const filtered = completionFiltered.filter(task => evaluateFilter(task, filterState));
+
   const sortedTasks = [...filtered].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const handleEditTask = useCallback((task: Task) => {
@@ -278,7 +289,7 @@ export function TodoView() {
   }, [deleteTask]);
 
   const formatDate = useCallback((dateStr: string | null) => {
-    if (!dateStr) return '-';
+    if (!dateStr) {return '-';}
     return new Date(dateStr).toLocaleDateString(locale);
   }, [locale]);
 
@@ -293,7 +304,7 @@ export function TodoView() {
   }, []);
 
   const saveEditing = useCallback(() => {
-    if (!editingCell) return;
+    if (!editingCell) {return;}
 
     const { taskId, field } = editingCell;
     // Get value from ref (non-controlled input for IME support)
@@ -302,7 +313,7 @@ export function TodoView() {
 
     switch (field) {
       case 'title':
-        if (value.trim()) updates.title = value.trim();
+        if (value.trim()) {updates.title = value.trim();}
         break;
       case 'description':
         updates.description = value.trim() || undefined;
@@ -340,7 +351,7 @@ export function TodoView() {
   // New task creation handler
   const handleCreateNewTask = useCallback(() => {
     const title = newTaskTitle.trim();
-    if (!title) return;
+    if (!title) {return;}
 
     const taskData = {
       projectId: currentProjectId || undefined,
@@ -379,7 +390,7 @@ export function TodoView() {
   }, []);
 
   const handleRowDragEnd = useCallback(() => {
-    if (!rowDragState) return;
+    if (!rowDragState) {return;}
 
     const { initialIndex, currentIndex } = rowDragState;
     const draggedTask = sortedTasks[initialIndex];
@@ -580,9 +591,31 @@ export function TodoView() {
     );
   };
 
+  // Define filter fields for TodoView
+  const filterFields = [
+    { id: 'title', label: t('task.title') },
+    { id: 'description', label: t('task.description') },
+    { id: 'status', label: t('task.status') },
+    { id: 'startDate', label: t('task.startDate') },
+    { id: 'dueDate', label: t('task.dueDate') },
+    { id: 'assignee', label: t('task.assignee') },
+  ];
+
   return (
-    <div className="h-full overflow-auto">
-      <table className="w-full text-base table-fixed border-collapse">
+    <div className="h-full flex flex-col">
+      {/* Toolbar with filter */}
+      <div className="flex items-center justify-end gap-2 p-2 border-b border-border">
+        <FilterPopover
+          fields={filterFields}
+          value={filterState}
+          onChange={setFilterState}
+          storageKey="taskscheduller-filters-todo"
+        />
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-base table-fixed border-collapse">
         <thead className="sticky top-0 bg-background border-b border-border z-10">
           <tr className="text-left text-sm text-muted-foreground">
             <th className="w-8 p-3"></th>
@@ -811,6 +844,7 @@ export function TodoView() {
           </tr>
         </tbody>
       </table>
+      </div>
 
       <TaskFormDialog
         open={isEditDialogOpen}

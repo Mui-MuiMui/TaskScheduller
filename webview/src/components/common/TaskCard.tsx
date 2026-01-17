@@ -17,20 +17,20 @@ export const TaskCard = memo(function TaskCard({ task, onClick, isDragging }: Ta
 
   // Get project info for this task (only shown in All Tasks mode)
   const projectInfo = useMemo(() => {
-    if (currentProjectId !== null || !task.projectId) return null;
+    if (currentProjectId !== null || !task.projectId) {return null;}
     return projects.find(p => p.id === task.projectId);
   }, [currentProjectId, task.projectId, projects]);
 
   // Calculate due date status - memoized to avoid recalculation
   const dueDateStatus = useMemo(() => {
-    if (!task.dueDate || task.status === 'done') return 'normal' as const;
+    if (!task.dueDate || task.status === 'done') {return 'normal' as const;}
     const dueDate = new Date(task.dueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
     const diffDays = Math.floor((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return 'overdue' as const;
-    if (diffDays === 0) return 'warning' as const;
+    if (diffDays < 0) {return 'overdue' as const;}
+    if (diffDays === 0) {return 'warning' as const;}
     return 'normal' as const;
   }, [task.dueDate, task.status]);
 

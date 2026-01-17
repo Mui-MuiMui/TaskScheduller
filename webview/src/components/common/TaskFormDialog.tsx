@@ -52,7 +52,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
 
   // 現在のタスクの先行タスク（依存関係）を取得
   const currentDependencies = useMemo(() => {
-    if (!task) return [];
+    if (!task) {return [];}
     return dependencies
       .filter(d => d.successorId === task.id)
       .map(d => ({
@@ -111,7 +111,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) return;
+    if (!formData.title.trim()) {return;}
 
     // 日付の整合性チェック：期限日が開始日より前の場合は開始日に合わせる
     let finalStartDate = formData.startDate || undefined;
@@ -152,7 +152,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
 
   // 依存関係を追加（選択時に即座に追加）
   const handleAddDependency = (predecessorId: string) => {
-    if (!task || !predecessorId) return;
+    if (!task || !predecessorId) {return;}
     createDependency(predecessorId, task.id);
   };
 
@@ -163,14 +163,14 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
 
   // タスクを削除
   const handleDeleteTask = () => {
-    if (!task) return;
+    if (!task) {return;}
     deleteTask(task.id);
     onOpenChange(false);
   };
 
   // タスクを複製
   const handleDuplicateTask = () => {
-    if (!task) return;
+    if (!task) {return;}
 
     // 日付の整合性チェック
     let finalStartDate = formData.startDate || undefined;
@@ -411,7 +411,7 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
               <div className="flex flex-wrap gap-1">
                 {selectedPredecessorIds.map(predId => {
                   const predTask = tasks.find(t => t.id === predId);
-                  if (!predTask) return null;
+                  if (!predTask) {return null;}
                   return (
                     <Badge
                       key={predId}

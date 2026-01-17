@@ -69,7 +69,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
   }, [column, open]);
 
   const handleSubmit = () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {return;}
 
     if (isEditing && column) {
       updateKanbanColumn(column.id, { name: name.trim(), color });
@@ -82,7 +82,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
   };
 
   const handleDelete = () => {
-    if (!column) return;
+    if (!column) {return;}
 
     if (taskCount > 0 && !showDeleteConfirm) {
       setShowDeleteConfirm(true);
@@ -96,7 +96,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
   };
 
   const handleConfirmDelete = () => {
-    if (!column || !targetColumnId) return;
+    if (!column || !targetColumnId) {return;}
     deleteKanbanColumn(column.id, targetColumnId);
     onOpenChange(false);
   };

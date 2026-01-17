@@ -37,6 +37,8 @@
   "action.export": "エクスポート",
   "action.import": "インポート",
   "action.today": "今日",
+  "action.filter": "フィルター",
+  "action.all": "すべて",
   "confirm.delete": "このタスクを削除してもよろしいですか？",
   "filter.showCompleted": "完了を表示",
   "message.noTasks": "タスクがありません。最初のタスクを作成しましょう！",
@@ -51,6 +53,7 @@
   "gantt.selectSuccessor": "後続タスクを選択: {task}",
   "gantt.clickToConnect": "クリックして接続",
   "gantt.addDependency": "依存関係を追加",
+  "gantt.highlightToday": "今日を強調表示",
   "validation.dueDateBeforeStartDate": "期限が開始日より前です（保存時に自動修正されます）",
   "kanban.addColumn": "カラムを追加",
   "kanban.editColumn": "カラムを編集",
@@ -67,5 +70,14 @@
   "kanban.scopeGlobalDesc": "このカラムは全てのプロジェクトに表示されます",
   "kanban.scopeProjectDesc": "このカラムはこのプロジェクトにのみ表示されます",
   "kanban.scopeGlobalInfo": "全プロジェクトで表示",
-  "kanban.scopeProjectInfo": "{0} のみで表示"
+  "kanban.scopeProjectInfo": "{0} のみで表示",
+  "filter.title": "フィルター",
+  "filter.addCondition": "条件を追加",
+  "filter.removeCondition": "削除",
+  "filter.clearAll": "すべてクリア",
+  "filter.logic.and": "AND",
+  "filter.logic.or": "OR",
+  "filter.field": "フィールド",
+  "filter.value": "値",
+  "filter.activeCount": "{0}件のフィルターが有効"
 }
