@@ -1,6 +1,53 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@source "../src";
+
+@theme {
+  /* Colors - VSCode theme integration */
+  --color-background: var(--vscode-editor-background);
+  --color-foreground: var(--vscode-editor-foreground);
+  --color-border: var(--vscode-panel-border);
+  --color-input: var(--vscode-input-background);
+  --color-ring: var(--vscode-focusBorder);
+
+  --color-primary: var(--vscode-button-background);
+  --color-primary-foreground: var(--vscode-button-foreground);
+
+  --color-secondary: var(--vscode-button-secondaryBackground);
+  --color-secondary-foreground: var(--vscode-button-secondaryForeground);
+
+  --color-destructive: var(--vscode-errorForeground);
+  --color-destructive-foreground: var(--vscode-editor-foreground);
+
+  --color-muted: var(--vscode-input-background);
+  --color-muted-foreground: var(--vscode-descriptionForeground);
+
+  --color-accent: var(--vscode-list-activeSelectionBackground);
+  --color-accent-foreground: var(--vscode-list-activeSelectionForeground);
+
+  --color-card: var(--vscode-editor-background);
+  --color-card-foreground: var(--vscode-editor-foreground);
+
+  --color-popover: var(--vscode-menu-background, var(--vscode-editor-background));
+  --color-popover-foreground: var(--vscode-menu-foreground, var(--vscode-editor-foreground));
+
+  /* Border radius */
+  --radius-lg: 6px;
+  --radius-md: 4px;
+  --radius-sm: 2px;
+
+  /* Font sizes with line heights */
+  --text-xs: 11px;
+  --text-xs--line-height: 16px;
+  --text-sm: 12px;
+  --text-sm--line-height: 18px;
+  --text-base: 13px;
+  --text-base--line-height: 20px;
+  --text-lg: 14px;
+  --text-lg--line-height: 22px;
+  --text-xl: 16px;
+  --text-xl--line-height: 24px;
+}
 
 /* VSCode theme integration */
 :root {
