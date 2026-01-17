@@ -951,16 +951,18 @@ export function GanttView() {
                     </TruncatedTaskInfo>
                     {/* Connect button - always visible */}
                     {!connectionState && (
-                      <button
-                        className="shrink-0 p-1.5 rounded hover:bg-muted transition-colors"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 h-7 w-7"
                         title={t('gantt.addDependency')}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleStartConnection(task);
                         }}
                       >
-                        <Link2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                      </button>
+                        <Link2 className="h-4 w-4" />
+                      </Button>
                     )}
                     {isConnectionSource && (
                       <span className="shrink-0 px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded">
@@ -1089,12 +1091,14 @@ export function GanttView() {
           <span className="text-sm">
             {t('gantt.selectSuccessor').replace('{task}', connectionState.predecessorTaskTitle)}
           </span>
-          <button
-            className="p-1 hover:bg-primary-foreground/20 rounded"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-primary-foreground/20 text-primary-foreground"
             onClick={handleCancelConnection}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       )}
 

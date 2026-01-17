@@ -132,11 +132,13 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
                 <Label>{t('kanban.columnColor')}</Label>
                 <div className="flex flex-wrap gap-2">
                   {COLUMN_PRESET_COLORS.map((preset) => (
-                    <button
+                    <Button
                       key={preset.id}
                       type="button"
+                      variant="outline"
+                      size="icon"
                       className={cn(
-                        'w-8 h-8 rounded-full border-2 transition-all',
+                        'w-8 h-8 rounded-full border-2 transition-all p-0',
                         color === preset.class
                           ? 'border-foreground scale-110'
                           : 'border-transparent hover:scale-105'

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
-import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui';
+import { Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tooltip, TooltipTrigger, TooltipContent, Input, Textarea, Button } from '@/components/ui';
 import { Flag, Trash2, FolderOpen, GripVertical, Check, X, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Task, TaskStatus } from '@/types';
@@ -127,8 +127,6 @@ const EditingInput = React.memo(function EditingInput({
 
   if (!cellRect) return null;
 
-  const baseInputClasses = "flex w-full rounded-md border border-border bg-input px-2 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
   // Render the input as a Portal to document.body for proper IME handling
   return createPortal(
     <div
@@ -141,42 +139,46 @@ const EditingInput = React.memo(function EditingInput({
       }}
     >
       {multiline ? (
-        <textarea
+        <Textarea
           ref={localRef as React.MutableRefObject<HTMLTextAreaElement>}
           defaultValue={defaultValue}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           rows={3}
-          className={`${baseInputClasses} resize-none`}
+          className="resize-none min-h-0"
         />
       ) : (
-        <input
+        <Input
           ref={localRef as React.MutableRefObject<HTMLInputElement>}
           type={type}
           defaultValue={defaultValue}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          className={`${baseInputClasses} h-7`}
+          className="h-7"
         />
       )}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         data-editing-button
         onClick={handleSaveClick}
-        className="p-1 rounded hover:bg-muted shrink-0"
         title={saveTitle}
+        className="h-7 w-7 shrink-0"
       >
         <Check className="h-3 w-3 text-green-500" />
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         data-editing-button
         onClick={handleCancelClick}
-        className="p-1 rounded hover:bg-muted shrink-0"
         title={cancelTitle}
+        className="h-7 w-7 shrink-0"
       >
         <X className="h-3 w-3 text-red-500" />
-      </button>
+      </Button>
     </div>,
     document.body
   );
@@ -759,20 +761,24 @@ export function TodoView() {
                 {/* Actions */}
                 <td className="p-3">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleEditTask(task)}
-                      className="p-1.5 rounded hover:bg-muted"
                       title={t('action.edit')}
+                      className="h-7 w-7"
                     >
-                      <Edit2 className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                    <button
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={(e) => handleDelete(e, task.id)}
-                      className="p-1.5 rounded hover:bg-muted"
                       title={t('action.delete')}
+                      className="h-7 w-7 hover:text-red-500"
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
-                    </button>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -784,14 +790,14 @@ export function TodoView() {
             <td className="p-3"></td>
             <td className="p-3"></td>
             <td className="p-3" style={{ width: columnWidths.title }}>
-              <input
+              <Input
                 type="text"
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={handleNewTaskKeyDown}
                 onBlur={handleCreateNewTask}
                 placeholder={t('task.newTaskPlaceholder')}
-                className="w-full bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground"
+                className="h-7 bg-transparent border-none shadow-none focus-visible:ring-0 px-0"
               />
             </td>
             {showProjectColumn && <td className="p-3" style={{ width: columnWidths.project }}></td>}

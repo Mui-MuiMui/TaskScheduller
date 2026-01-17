@@ -392,13 +392,15 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                     className="flex items-center gap-1 pr-1"
                   >
                     <span className="max-w-[150px] truncate">{predecessorTask!.title}</span>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleRemoveDependency(dependency.id)}
-                      className="ml-1 hover:bg-muted rounded p-0.5"
+                      className="ml-1 h-4 w-4 hover:bg-muted p-0"
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                    </Button>
                   </Badge>
                 ))}
               </div>
@@ -417,13 +419,15 @@ export function TaskFormDialog({ open, onOpenChange, task }: TaskFormDialogProps
                       className="flex items-center gap-1 pr-1"
                     >
                       <span className="max-w-[150px] truncate">{predTask.title}</span>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setSelectedPredecessorIds(prev => prev.filter(id => id !== predId))}
-                        className="ml-1 hover:bg-muted rounded p-0.5"
+                        className="ml-1 h-4 w-4 hover:bg-muted p-0"
                       >
                         <X className="h-3 w-3" />
-                      </button>
+                      </Button>
                     </Badge>
                   );
                 })}
