@@ -37,6 +37,8 @@
   "action.export": "Export",
   "action.import": "Import",
   "action.today": "Today",
+  "action.filter": "Filter",
+  "action.all": "All",
   "confirm.delete": "Are you sure you want to delete this task?",
   "filter.showCompleted": "Show completed",
   "message.noTasks": "No tasks yet. Create your first task!",
@@ -51,6 +53,7 @@
   "gantt.selectSuccessor": "Select successor for: {task}",
   "gantt.clickToConnect": "Click to connect",
   "gantt.addDependency": "Add Dependency",
+  "gantt.highlightToday": "Highlight today",
   "validation.dueDateBeforeStartDate": "Due date is before start date (will be auto-corrected on save)",
   "kanban.addColumn": "Add Column",
   "kanban.editColumn": "Edit Column",
@@ -67,5 +70,14 @@
   "kanban.scopeGlobalDesc": "This column will appear in all projects",
   "kanban.scopeProjectDesc": "This column will only appear in this project",
   "kanban.scopeGlobalInfo": "Visible in all projects",
-  "kanban.scopeProjectInfo": "Only visible in {0}"
+  "kanban.scopeProjectInfo": "Only visible in {0}",
+  "filter.title": "Filters",
+  "filter.addCondition": "Add Condition",
+  "filter.removeCondition": "Remove",
+  "filter.clearAll": "Clear All",
+  "filter.logic.and": "AND",
+  "filter.logic.or": "OR",
+  "filter.field": "Field",
+  "filter.value": "Value",
+  "filter.activeCount": "{0} filter(s) active"
 }

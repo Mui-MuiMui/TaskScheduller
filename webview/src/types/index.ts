@@ -162,3 +162,13 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
   on_hold: 'text-gray-500',
   done: 'text-green-500',
 };
+
+// Filter types and utilities
+export type { FilterCondition, FilterState } from './filter';
+export {
+  createEmptyFilterState,
+  evaluateCondition,
+  evaluateFilter,
+  saveFilterState,
+  loadFilterState,
+} from './filter';

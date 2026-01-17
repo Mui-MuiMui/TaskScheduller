@@ -65,7 +65,7 @@ export class ProjectRepository {
 
   update(id: string, dto: UpdateProjectDto): Project | null {
     const existing = this.findById(id);
-    if (!existing) return null;
+    if (!existing) {return null;}
 
     const updates: string[] = [];
     const values: (string | number | null)[] = [];
@@ -87,7 +87,7 @@ export class ProjectRepository {
       values.push(dto.sortOrder);
     }
 
-    if (updates.length === 0) return existing;
+    if (updates.length === 0) {return existing;}
 
     values.push(id);
     this.dbManager.execute(`UPDATE projects SET ${updates.join(', ')} WHERE id = ?`, values);
@@ -98,10 +98,10 @@ export class ProjectRepository {
   delete(id: string): boolean {
     // Check if project exists
     const existing = this.findById(id);
-    if (!existing) return false;
+    if (!existing) {return false;}
 
     // Don't allow deleting the default project
-    if (id === 'default-project') return false;
+    if (id === 'default-project') {return false;}
 
     // Delete all tasks belonging to this project
     this.dbManager.execute(`DELETE FROM tasks WHERE project_id = ?`, [id]);

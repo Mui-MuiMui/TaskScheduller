@@ -2,7 +2,7 @@
   "name": "taskscheduller",
   "displayName": "TaskScheduller",
   "description": "Task management with Todo list, Kanban board, and Gantt chart views",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "publisher": "mui-muimui",
   "license": "MIT",
   "icon": "resources/icons/icon.png",
@@ -106,14 +106,14 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run build",
-    "build": "npm run build:extension && npm run build:webview && npm run copy:wasm",
+    "vscode:prepublish": "pnpm run build",
+    "build": "pnpm run build:extension && pnpm run build:webview && pnpm run copy:wasm",
     "build:extension": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
-    "build:webview": "cd webview && npm run build",
+    "build:webview": "cd webview && pnpm run build",
     "copy:wasm": "node -e \"require('fs').copyFileSync('node_modules/sql.js/dist/sql-wasm.wasm', 'dist/sql-wasm.wasm')\"",
-    "watch": "concurrently \"npm run watch:extension\" \"npm run watch:webview\"",
+    "watch": "concurrently \"pnpm run watch:extension\" \"pnpm run watch:webview\"",
     "watch:extension": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
-    "watch:webview": "cd webview && npm run dev",
+    "watch:webview": "cd webview && pnpm run dev",
     "test": "jest",
     "test:unit": "jest --testPathPattern=unit",
     "test:e2e": "vscode-test",
@@ -121,9 +121,10 @@
     "lint": "eslint src webview/src --ext ts,tsx",
     "lint:fix": "eslint src webview/src --ext ts,tsx --fix",
     "package": "vsce package",
-    "compile": "npm run build:extension"
+    "compile": "pnpm run build:extension"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.10.0",
     "@types/uuid": "^10.0.0",
     "@types/vscode": "^1.100.0",
@@ -135,11 +136,11 @@
     "esbuild": "^0.24.0",
     "eslint": "^9.16.0",
     "jest": "^29.7.0",
-    "@types/jest": "^29.5.14",
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "shadcn-ui": "^0.9.5",
     "sql.js": "^1.13.0",
     "uuid": "^11.0.3"
   }

@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useTaskStore } from '@/stores/taskStore';
 import { useI18n } from '@/i18n';
-import { Button, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui';
+import { Button, Tooltip, TooltipTrigger, TooltipContent, Checkbox } from '@/components/ui';
+import { FilterPopover } from '@/components/common/FilterPopover';
 import { ChevronLeft, ChevronRight, Link2, X, FolderOpen, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
-import type { Task, KanbanColumn } from '@/types';
-import { getHexColor } from '@/types';
+import type { Task, KanbanColumn, FilterState } from '@/types';
+import { getHexColor, createEmptyFilterState, evaluateFilter, loadFilterState } from '@/types';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -107,6 +108,14 @@ export function GanttView() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionState | null>(null);
   const chartAreaRef = useRef<HTMLDivElement>(null);
+  const [filterState, setFilterState] = useState<FilterState>(() => {
+    const saved = loadFilterState('taskscheduller-filters-gantt');
+    return saved || createEmptyFilterState();
+  });
+  const [highlightToday, setHighlightToday] = useState(() => {
+    const saved = localStorage.getItem('gantt-highlight-today');
+    return saved ? JSON.parse(saved) : true;
+  });
 
   // Task column width (resizable) - load from localStorage
   const TASK_COLUMN_MIN_WIDTH = 150;
@@ -133,10 +142,10 @@ export function GanttView() {
   const ctrlKeyRef = useRef(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Control') ctrlKeyRef.current = true;
+      if (e.key === 'Control') {ctrlKeyRef.current = true;}
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Control') ctrlKeyRef.current = false;
+      if (e.key === 'Control') {ctrlKeyRef.current = false;}
     };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
@@ -165,7 +174,7 @@ export function GanttView() {
     columnResizeRef.current = { startX: e.clientX, startWidth: taskColumnWidth };
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!columnResizeRef.current) return;
+      if (!columnResizeRef.current) {return;}
       const delta = moveEvent.clientX - columnResizeRef.current.startX;
       const newWidth = Math.min(TASK_COLUMN_MAX_WIDTH, Math.max(TASK_COLUMN_MIN_WIDTH, columnResizeRef.current.startWidth + delta));
       setTaskColumnWidth(newWidth);
@@ -188,14 +197,15 @@ export function GanttView() {
 
   // Filter tasks with dates
   const filteredByCompletion = showCompletedTasks ? tasks : tasks.filter(t => t.status !== 'done');
-  const tasksWithDates = filteredByCompletion.filter((task) => task.startDate || task.dueDate);
+  const filteredByFilter = filteredByCompletion.filter(t => evaluateFilter(t, filterState));
+  const tasksWithDates = filteredByFilter.filter((task) => task.startDate || task.dueDate);
 
   // Fixed cell width for all view modes
   const cellWidth = 40;
 
   // Calculate visible columns based on container width
   const visibleColumns = useMemo(() => {
-    if (containerWidth <= 0) return 10;
+    if (containerWidth <= 0) {return 10;}
     return Math.max(Math.floor(containerWidth / cellWidth), 5);
   }, [containerWidth, cellWidth]);
 
@@ -296,7 +306,7 @@ export function GanttView() {
 
   // Get drag offset in pixels for a specific task
   const getDragOffset = useCallback((taskId: string, type: 'left' | 'width') => {
-    if (!dragState || dragState.taskId !== taskId) return 0;
+    if (!dragState || dragState.taskId !== taskId) {return 0;}
 
     const deltaX = dragState.currentX - dragState.initialX;
 
@@ -316,7 +326,7 @@ export function GanttView() {
     const taskStart = task.startDate ? new Date(task.startDate) : null;
     const taskEnd = task.dueDate ? new Date(task.dueDate) : taskStart;
 
-    if (!taskStart && !taskEnd) return null;
+    if (!taskStart && !taskEnd) {return null;}
 
     const effectiveStart = taskStart || taskEnd!;
     const effectiveEnd = taskEnd || taskStart!;
@@ -325,14 +335,25 @@ export function GanttView() {
     const taskStartTime = Math.max(effectiveStart.getTime(), rangeStart.getTime());
     const taskEndTime = Math.min(effectiveEnd.getTime(), rangeEnd.getTime());
 
-    if (taskEndTime < rangeStart.getTime() || taskStartTime > rangeEnd.getTime()) return null;
+    if (taskEndTime < rangeStart.getTime() || taskStartTime > rangeEnd.getTime()) {return null;}
 
     const leftPx = ((taskStartTime - rangeStart.getTime()) / totalRangeMs) * totalChartWidth;
     const widthPx = ((taskEndTime - taskStartTime) / totalRangeMs) * totalChartWidth;
 
+    // Calculate progress bar width based on total task duration (not visible range)
+    const totalTaskDuration = effectiveEnd.getTime() - effectiveStart.getTime();
+    const progressDuration = totalTaskDuration * (task.progress / 100);
+    const progressEndTime = effectiveStart.getTime() + progressDuration;
+
+    // Clamp progress end to visible range and calculate progress width in pixels
+    const visibleProgressStart = Math.max(effectiveStart.getTime(), rangeStart.getTime());
+    const visibleProgressEnd = Math.min(progressEndTime, rangeEnd.getTime());
+    const progressWidthPx = Math.max(0, ((visibleProgressEnd - visibleProgressStart) / totalRangeMs) * totalChartWidth);
+
     return {
       leftPx,
       widthPx: Math.max(widthPx, 20),
+      progressWidthPx, // Actual pixel width for progress bar
     };
   }, [rangeStart, rangeEnd, totalRangeMs, totalChartWidth]);
 
@@ -406,7 +427,7 @@ export function GanttView() {
   }, []);
 
   const handleDragEnd = useCallback(() => {
-    if (!dragState) return;
+    if (!dragState) {return;}
 
     const task = tasks.find(t => t.id === dragState.taskId);
     if (!task) {
@@ -495,6 +516,12 @@ export function GanttView() {
     setConnectionState(null);
   }, []);
 
+  // Handle highlight today toggle
+  const handleHighlightTodayChange = useCallback((checked: boolean) => {
+    setHighlightToday(checked);
+    localStorage.setItem('gantt-highlight-today', JSON.stringify(checked));
+  }, []);
+
   // Row drag handlers for reordering tasks
   const handleRowDragStart = useCallback((e: React.DragEvent, taskId: string, index: number) => {
     e.dataTransfer.effectAllowed = 'copyMove';
@@ -513,7 +540,7 @@ export function GanttView() {
   }, []);
 
   const handleRowDragEnd = useCallback(() => {
-    if (!rowDragState) return;
+    if (!rowDragState) {return;}
 
     const { initialIndex, currentIndex } = rowDragState;
     const draggedTask = tasksWithDates[initialIndex];
@@ -604,12 +631,12 @@ export function GanttView() {
       const predTask = tasksWithDates.find(t => t.id === dep.predecessorId);
       const succTask = tasksWithDates.find(t => t.id === dep.successorId);
 
-      if (!predTask || !succTask) return null;
+      if (!predTask || !succTask) {return null;}
 
       const predPos = getTaskPosition(predTask);
       const succPos = getTaskPosition(succTask);
 
-      if (!predPos || !succPos) return null;
+      if (!predPos || !succPos) {return null;}
 
       const predIndex = taskIndexMap.get(dep.predecessorId)!;
       const succIndex = taskIndexMap.get(dep.successorId)!;
@@ -722,16 +749,6 @@ export function GanttView() {
     }>
   , [dependencies, tasksWithDates, taskIndexMap, getTaskPosition, rowHeight, verticalPadding, currentProjectId]);
 
-  if (tasksWithDates.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground text-base">
-          {t('message.noTasksWithDates')}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -748,28 +765,45 @@ export function GanttView() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button
-            variant={viewMode === 'day' ? 'secondary' : 'ghost'}
-            size="default"
-            onClick={() => setViewMode('day')}
-          >
-            {t('gantt.day')}
-          </Button>
-          <Button
-            variant={viewMode === 'week' ? 'secondary' : 'ghost'}
-            size="default"
-            onClick={() => setViewMode('week')}
-          >
-            {t('gantt.week')}
-          </Button>
-          <Button
-            variant={viewMode === 'month' ? 'secondary' : 'ghost'}
-            size="default"
-            onClick={() => setViewMode('month')}
-          >
-            {t('gantt.month')}
-          </Button>
+        <div className="flex items-center gap-3">
+          <FilterPopover
+            fields={[{ id: 'title', label: t('task.title') }]}
+            value={filterState}
+            onChange={setFilterState}
+            storageKey="taskscheduller-filters-gantt"
+          />
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
+              checked={highlightToday}
+              onCheckedChange={handleHighlightTodayChange}
+            />
+            <span>{t('gantt.highlightToday')}</span>
+          </label>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant={viewMode === 'day' ? 'secondary' : 'ghost'}
+              size="default"
+              onClick={() => setViewMode('day')}
+            >
+              {t('gantt.day')}
+            </Button>
+            <Button
+              variant={viewMode === 'week' ? 'secondary' : 'ghost'}
+              size="default"
+              onClick={() => setViewMode('week')}
+            >
+              {t('gantt.week')}
+            </Button>
+            <Button
+              variant={viewMode === 'month' ? 'secondary' : 'ghost'}
+              size="default"
+              onClick={() => setViewMode('month')}
+            >
+              {t('gantt.month')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -781,32 +815,42 @@ export function GanttView() {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
+        {tasksWithDates.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-muted-foreground text-base">
+              {t('message.noTasksWithDates')}
+            </p>
+          </div>
+        ) : (
         <div className="min-w-[600px]">
           {/* Header row */}
           <div className="flex border-b border-border sticky top-0 bg-background z-20">
             <div
-              className="shrink-0 p-2 border-r border-border text-sm font-medium flex items-center sticky left-0 bg-background z-10 select-none"
+              className="shrink-0 border-r border-border sticky left-0 bg-background z-10 select-none"
               style={{ width: taskColumnWidth }}
             >
-              {t('task.task')}
-              {/* Resize handle */}
-              <div
-                className="absolute right-0 top-0 bottom-0 w-2 -mr-1 cursor-col-resize hover:bg-primary/50 active:bg-primary z-20"
-                onMouseDown={handleColumnResizeStart}
-              />
+              <div className="p-2 text-sm font-medium flex items-center">
+                {t('task.task')}
+                {/* Resize handle */}
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-2 -mr-1 cursor-col-resize hover:bg-primary/50 active:bg-primary z-20"
+                  onMouseDown={handleColumnResizeStart}
+                />
+              </div>
             </div>
             <div className="flex-1 flex">
               {columns.map((col, idx) => {
                 const isWeekend = viewMode === 'day' &&
                   (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+                const shouldHighlight = highlightToday && col.isCurrentPeriod;
 
                 return (
                   <div
                     key={idx}
                     className={cn(
                       'text-center text-xs border-r border-border py-1',
-                      col.isCurrentPeriod && 'bg-primary/20',
-                      isWeekend && 'bg-muted/50'
+                      shouldHighlight && 'bg-red-500/10',
+                      !shouldHighlight && isWeekend && 'bg-muted/50'
                     )}
                     style={{ width: cellWidth, minWidth: cellWidth }}
                   >
@@ -928,7 +972,7 @@ export function GanttView() {
                         {/* Project indicator in All Tasks mode */}
                         {currentProjectId === null && task.projectId && (() => {
                           const projectInfo = projects.find(p => p.id === task.projectId);
-                          if (!projectInfo) return null;
+                          if (!projectInfo) {return null;}
                           return (
                             <div className="flex items-center gap-0.5 text-xs truncate">
                               <FolderOpen className="h-3 w-3 shrink-0" style={{ color: projectInfo.color }} />
@@ -951,16 +995,18 @@ export function GanttView() {
                     </TruncatedTaskInfo>
                     {/* Connect button - always visible */}
                     {!connectionState && (
-                      <button
-                        className="shrink-0 p-1.5 rounded hover:bg-muted transition-colors"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 h-7 w-7"
                         title={t('gantt.addDependency')}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleStartConnection(task);
                         }}
                       >
-                        <Link2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                      </button>
+                        <Link2 className="h-4 w-4" />
+                      </Button>
                     )}
                     {isConnectionSource && (
                       <span className="shrink-0 px-2 py-0.5 text-xs bg-primary text-primary-foreground rounded">
@@ -979,14 +1025,15 @@ export function GanttView() {
                       {columns.map((col, index) => {
                         const isWeekend = viewMode === 'day' &&
                           (col.startDate.getDay() === 0 || col.startDate.getDay() === 6);
+                        const shouldHighlight = highlightToday && col.isCurrentPeriod;
 
                         return (
                           <div
                             key={index}
                             className={cn(
                               'border-r border-border',
-                              col.isCurrentPeriod && 'bg-primary/10',
-                              isWeekend && 'bg-muted/30'
+                              shouldHighlight && 'bg-red-500/10',
+                              !shouldHighlight && isWeekend && 'bg-muted/30'
                             )}
                             style={{ width: cellWidth, minWidth: cellWidth }}
                           />
@@ -1037,10 +1084,10 @@ export function GanttView() {
                             }
                           }}
                         >
-                          {/* Progress indicator - filled portion */}
+                          {/* Progress indicator - filled portion based on total task duration */}
                           <div
                             className="h-full rounded-l pointer-events-none"
-                            style={{ width: `${task.progress}%`, backgroundColor: hexColor }}
+                            style={{ width: `${position.progressWidthPx}px`, backgroundColor: hexColor }}
                           />
 
                           {/* Left resize handle */}
@@ -1081,6 +1128,7 @@ export function GanttView() {
             })}
           </div>
         </div>
+        )}
       </div>
 
       {/* Connection mode banner */}
@@ -1089,12 +1137,14 @@ export function GanttView() {
           <span className="text-sm">
             {t('gantt.selectSuccessor').replace('{task}', connectionState.predecessorTaskTitle)}
           </span>
-          <button
-            className="p-1 hover:bg-primary-foreground/20 rounded"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-primary-foreground/20 text-primary-foreground"
             onClick={handleCancelConnection}
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       )}
 

@@ -16,6 +16,7 @@ export {
 } from './dialog';
 export { Input } from './input';
 export { Label } from './label';
+export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from './popover';
 export { Progress } from './progress';
 export {
   Select,

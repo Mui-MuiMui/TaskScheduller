@@ -86,7 +86,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _getProjectRepository(): ProjectRepository | undefined {
-    if (!this._databaseManager) return undefined;
+    if (!this._databaseManager) {return undefined;}
     if (!this._projectRepository) {
       this._projectRepository = new ProjectRepository(this._databaseManager);
     }
@@ -94,7 +94,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _sendProjects(): void {
-    if (!this._view) return;
+    if (!this._view) {return;}
 
     const repo = this._getProjectRepository();
     if (!repo) {
@@ -124,7 +124,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   }
 
   private _sendTranslations(): void {
-    if (!this._view) return;
+    if (!this._view) {return;}
 
     const translations = {
       'sidebar.projects': vscode.l10n.t('sidebar.projects'),
@@ -154,7 +154,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
   private _createProject(name: string, description: string, color: string): void {
     const repo = this._getProjectRepository();
-    if (!repo) return;
+    if (!repo) {return;}
 
     try {
       repo.create({ name, description, color });
@@ -169,7 +169,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
   private _updateProject(projectId: string, name: string, description: string, color: string): void {
     const repo = this._getProjectRepository();
-    if (!repo) return;
+    if (!repo) {return;}
 
     try {
       repo.update(projectId, { name, description, color });
@@ -184,7 +184,7 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
   private _deleteProject(projectId: string): void {
     const repo = this._getProjectRepository();
-    if (!repo) return;
+    if (!repo) {return;}
 
     try {
       const success = repo.delete(projectId);

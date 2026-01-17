@@ -2,8 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "watch",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["run", "watch"],
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
       "presentation": {
@@ -12,21 +13,24 @@
       "group": {
         "kind": "build",
         "isDefault": true
-      }
+      },
+      "label": "pnpm: watch"
     },
     {
-      "type": "npm",
-      "script": "build",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["run", "build"],
       "problemMatcher": "$tsc",
       "group": "build",
-      "label": "npm: build"
+      "label": "pnpm: build"
     },
     {
-      "type": "npm",
-      "script": "lint",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["run", "lint"],
       "problemMatcher": ["$eslint-stylish"],
       "group": "test",
-      "label": "npm: lint"
+      "label": "pnpm: lint"
     }
   ]
 }

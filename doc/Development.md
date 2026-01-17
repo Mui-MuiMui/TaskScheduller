@@ -1,13 +1,15 @@
 
 ## Development
 
+**Note:** This project uses pnpm as the package manager.
+
 ```bash
 # Start development mode with hot reload
-npm run watch
+pnpm run watch
 
 # Run tests
-npm test
+pnpm test
 
 # Lint code
-npm run lint
+pnpm run lint
 ```

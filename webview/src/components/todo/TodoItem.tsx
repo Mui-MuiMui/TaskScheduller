@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo } from 'react';
 import type { Task } from '@/types';
-import { Checkbox, Badge, Progress } from '@/components/ui';
+import { Checkbox, Badge, Progress, Button } from '@/components/ui';
 import { useTaskStore } from '@/stores/taskStore';
 import { Calendar, User, Flag, Trash2, Edit2, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ export const TodoItem = memo(function TodoItem({ task, onEdit }: TodoItemProps) 
 
   // Get project info for this task (only shown in All Tasks mode)
   const projectInfo = useMemo(() => {
-    if (currentProjectId !== null || !task.projectId) return null;
+    if (currentProjectId !== null || !task.projectId) {return null;}
     return projects.find(p => p.id === task.projectId);
   }, [currentProjectId, task.projectId, projects]);
 
@@ -121,20 +121,24 @@ export const TodoItem = memo(function TodoItem({ task, onEdit }: TodoItemProps) 
 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onEdit}
-          className="p-1 rounded hover:bg-muted"
           title="Edit"
+          className="h-6 w-6"
         >
-          <Edit2 className="h-3 w-3 text-muted-foreground" />
-        </button>
-        <button
+          <Edit2 className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={handleDelete}
-          className="p-1 rounded hover:bg-muted"
           title="Delete"
+          className="h-6 w-6 hover:text-red-500"
         >
-          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-        </button>
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   );

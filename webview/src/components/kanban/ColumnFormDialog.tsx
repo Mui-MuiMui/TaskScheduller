@@ -69,7 +69,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
   }, [column, open]);
 
   const handleSubmit = () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {return;}
 
     if (isEditing && column) {
       updateKanbanColumn(column.id, { name: name.trim(), color });
@@ -82,7 +82,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
   };
 
   const handleDelete = () => {
-    if (!column) return;
+    if (!column) {return;}
 
     if (taskCount > 0 && !showDeleteConfirm) {
       setShowDeleteConfirm(true);
@@ -96,7 +96,7 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
   };
 
   const handleConfirmDelete = () => {
-    if (!column || !targetColumnId) return;
+    if (!column || !targetColumnId) {return;}
     deleteKanbanColumn(column.id, targetColumnId);
     onOpenChange(false);
   };
@@ -132,11 +132,13 @@ export function ColumnFormDialog({ open, onOpenChange, column }: ColumnFormDialo
                 <Label>{t('kanban.columnColor')}</Label>
                 <div className="flex flex-wrap gap-2">
                   {COLUMN_PRESET_COLORS.map((preset) => (
-                    <button
+                    <Button
                       key={preset.id}
                       type="button"
+                      variant="outline"
+                      size="icon"
                       className={cn(
-                        'w-8 h-8 rounded-full border-2 transition-all',
+                        'w-8 h-8 rounded-full border-2 transition-all p-0',
                         color === preset.class
                           ? 'border-foreground scale-110'
                           : 'border-transparent hover:scale-105'
