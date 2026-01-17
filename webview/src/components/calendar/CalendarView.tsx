@@ -514,18 +514,19 @@ export function CalendarView() {
       )}
 
       {/* Calendar Grid */}
-      <div ref={containerRef} className="flex-1 overflow-auto border border-border rounded">
-        <div className="min-w-[700px] h-full flex flex-col">
-          {/* Day names header */}
-          <div className="grid grid-cols-7 border-b border-border bg-muted/30 sticky top-0 z-10">
+      <div className="flex-1 border border-border rounded flex flex-col overflow-hidden min-w-[700px]">
+        {/* Day names header - only for month view */}
+        {viewMode === 'month' && (
+          <div className="grid grid-cols-7 border-b border-border bg-background shrink-0">
             {dayNames.map((day, idx) => {
               const actualDayIdx = weekStartDay === 0 ? idx : (idx + 1) % 7;
               return (
                 <div
                   key={idx}
                   className={cn(
-                    'p-2 text-center text-sm font-medium border-r border-border last:border-r-0',
-                    (actualDayIdx === 0 || actualDayIdx === 6) && 'text-red-500'
+                    'p-2 text-center text-sm font-medium border-r border-border last:border-r-0 bg-background',
+                    actualDayIdx === 0 && 'text-red-500',
+                    actualDayIdx === 6 && 'text-blue-500'
                   )}
                 >
                   {day}
@@ -533,10 +534,67 @@ export function CalendarView() {
               );
             })}
           </div>
+        )}
 
-          {/* Continuous weeks for month view or single week for week view */}
-          {viewMode === 'month' ? (
-            <div className="flex-1">
+        {viewMode === 'week' && (
+          <>
+            {/* Day names header for week view */}
+            <div className="grid grid-cols-7 border-b border-border bg-background shrink-0">
+              {dayNames.map((day, idx) => {
+                const actualDayIdx = weekStartDay === 0 ? idx : (idx + 1) % 7;
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      'p-2 text-center text-sm font-medium border-r border-border last:border-r-0 bg-background',
+                      actualDayIdx === 0 && 'text-red-500',
+                      actualDayIdx === 6 && 'text-blue-500'
+                    )}
+                  >
+                    {day}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Date numbers for week view */}
+            <div className="grid grid-cols-7 border-b border-border bg-background shrink-0">
+              {calendarGrid.days.map((date, colIdx) => {
+                const isToday = date.toDateString() === today.toDateString();
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                return (
+                  <div
+                    key={colIdx}
+                    className={cn(
+                      'border-r border-border last:border-r-0 p-2 text-center cursor-pointer transition-colors hover:bg-muted/50',
+                      isToday && 'bg-primary/10',
+                      isWeekend && 'bg-muted/10'
+                    )}
+                    onClick={handleDateClick}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDateDrop(e, date)}
+                  >
+                    <div className={cn(
+                      'text-lg font-bold',
+                      isToday && 'text-primary'
+                    )}>
+                      {date.getDate()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-auto"
+        >
+          <div>
+            {/* Continuous weeks for month view or single week for week view */}
+            {viewMode === 'month' ? (
+              <div className="flex-1">
               {calendarGrid.weeks.map((week, weekIdx) => {
                 // Use first day of week as unique key
                 const firstDay = week.days[0];
@@ -613,7 +671,7 @@ export function CalendarView() {
                           );
                         })}
                       </div>
-                      <div className="absolute inset-0" style={{ minHeight: `${weekMaxRows * 28}px` }}>
+                      <div className="absolute inset-0 pt-1" style={{ minHeight: `${weekMaxRows * 28 + 4}px` }}>
                         {weekBars.map((bar, idx) => {
                           const statusColor = getStatusColor(bar.task.status);
                           const hexColor = getHexColor(statusColor);
@@ -633,7 +691,7 @@ export function CalendarView() {
                               style={{
                                 left: `${(localStartCol / 7) * 100}%`,
                                 width: `${(localSpan / 7) * 100}%`,
-                                top: `${bar.row * 28}px`,
+                                top: `${bar.row * 28 + 4}px`,
                                 height: '24px',
                                 backgroundColor: hexColor,
                                 color: '#ffffff',
@@ -656,35 +714,7 @@ export function CalendarView() {
             </div>
           ) : (
             // Week view
-            <div className="flex-1 flex flex-col">
-              <div className="grid grid-cols-7 border-b border-border sticky top-8 z-10 bg-background">
-                {calendarGrid.days.map((date, colIdx) => {
-                  const isToday = date.toDateString() === today.toDateString();
-                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-                  return (
-                    <div
-                      key={colIdx}
-                      className={cn(
-                        'border-r border-border last:border-r-0 p-2 text-center cursor-pointer transition-colors hover:bg-muted/50',
-                        isToday && 'bg-primary/10',
-                        isWeekend && 'bg-muted/10'
-                      )}
-                      onClick={handleDateClick}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDateDrop(e, date)}
-                    >
-                      <div className={cn(
-                        'text-lg font-bold',
-                        isToday && 'text-primary'
-                      )}>
-                        {date.getDate()}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex-1 relative grid grid-cols-7" style={{ minHeight: `${maxRows * 32}px` }}>
+            <div className="flex-1 relative grid grid-cols-7" style={{ minHeight: `${maxRows * 32 + 4}px` }}>
                 {calendarGrid.days.map((date, colIdx) => {
                   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                   return (
@@ -710,7 +740,7 @@ export function CalendarView() {
                       style={{
                         left: `${(bar.startCol / 7) * 100}%`,
                         width: `${(bar.span / 7) * 100}%`,
-                        top: `${bar.row * 32 + 4}px`,
+                        top: `${bar.row * 32}px`,
                         height: '28px',
                         backgroundColor: hexColor,
                         color: '#ffffff',
@@ -726,8 +756,8 @@ export function CalendarView() {
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
