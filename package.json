@@ -120,7 +120,7 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint src webview/src --ext ts,tsx",
     "lint:fix": "eslint src webview/src --ext ts,tsx --fix",
-    "package": "vsce package",
+    "package": "vsce package --no-dependencies",
     "compile": "pnpm run build:extension"
   },
   "devDependencies": {
