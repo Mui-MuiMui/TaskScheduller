@@ -340,9 +340,20 @@ export function GanttView() {
     const leftPx = ((taskStartTime - rangeStart.getTime()) / totalRangeMs) * totalChartWidth;
     const widthPx = ((taskEndTime - taskStartTime) / totalRangeMs) * totalChartWidth;
 
+    // Calculate progress bar width based on total task duration (not visible range)
+    const totalTaskDuration = effectiveEnd.getTime() - effectiveStart.getTime();
+    const progressDuration = totalTaskDuration * (task.progress / 100);
+    const progressEndTime = effectiveStart.getTime() + progressDuration;
+
+    // Clamp progress end to visible range and calculate progress width in pixels
+    const visibleProgressStart = Math.max(effectiveStart.getTime(), rangeStart.getTime());
+    const visibleProgressEnd = Math.min(progressEndTime, rangeEnd.getTime());
+    const progressWidthPx = Math.max(0, ((visibleProgressEnd - visibleProgressStart) / totalRangeMs) * totalChartWidth);
+
     return {
       leftPx,
       widthPx: Math.max(widthPx, 20),
+      progressWidthPx, // Actual pixel width for progress bar
     };
   }, [rangeStart, rangeEnd, totalRangeMs, totalChartWidth]);
 
@@ -1073,10 +1084,10 @@ export function GanttView() {
                             }
                           }}
                         >
-                          {/* Progress indicator - filled portion */}
+                          {/* Progress indicator - filled portion based on total task duration */}
                           <div
                             className="h-full rounded-l pointer-events-none"
-                            style={{ width: `${task.progress}%`, backgroundColor: hexColor }}
+                            style={{ width: `${position.progressWidthPx}px`, backgroundColor: hexColor }}
                           />
 
                           {/* Left resize handle */}
