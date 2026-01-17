@@ -3,3 +3,33 @@
   background-color: var(--vscode-editor-background);
   color: var(--vscode-foreground);
 }
+
+/* Scroll container with snap to weeks */
+.calendar-scroll-container {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 0;
+}
+
+/* Smooth scrolling for week navigation */
+.calendar-scroll-container.month-view {
+  scroll-behavior: auto;
+}
+
+.calendar-scroll-container::-webkit-scrollbar {
+  width: 12px;
+}
+
+.calendar-scroll-container::-webkit-scrollbar-track {
+  background: var(--vscode-scrollbarSlider-background);
+}
+
+.calendar-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+  border-radius: 6px;
+}
+
+/* Each date row should snap */
+.calendar-date-row {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}

@@ -51,6 +51,7 @@ export function CalendarView() {
   const weekRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollUpdateTimeoutRef = useRef<number | null>(null);
   const hasScrolledToToday = useRef(false);
+  const WEEK_HEIGHT = 150; // Height of each week row in pixels
 
   // Get status color from kanban columns
   const getStatusColor = useCallback((status: string): string => {
@@ -175,6 +176,34 @@ export function CalendarView() {
       hasScrolledToToday.current = true;
     }
   }, [calendarGrid.weeks, viewMode, today]);
+
+  // Custom wheel handler for month view to scroll by week height
+  useEffect(() => {
+    if (viewMode !== 'month' || !containerRef.current) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Determine scroll direction and amount
+      const delta = e.deltaY;
+      const scrollAmount = delta > 0 ? WEEK_HEIGHT : -WEEK_HEIGHT;
+
+      // Smooth scroll by week height
+      container.scrollBy({
+        top: scrollAmount,
+        behavior: 'smooth'
+      });
+    };
+
+    const container = containerRef.current;
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [viewMode]);
 
   // Monitor scroll position to update displayed month - simplified approach
   useEffect(() => {
@@ -589,7 +618,10 @@ export function CalendarView() {
 
         <div
           ref={containerRef}
-          className="flex-1 overflow-auto"
+          className={cn(
+            "flex-1 overflow-auto calendar-scroll-container",
+            viewMode === 'month' && 'month-view'
+          )}
         >
           <div>
             {/* Continuous weeks for month view or single week for week view */}
@@ -617,10 +649,10 @@ export function CalendarView() {
                     data-week-month={week.month}
                     data-week-year={week.year}
                     className="border-b border-border last:border-b-0"
-                    style={{ height: '150px' }}
+                    style={{ height: `${WEEK_HEIGHT}px` }}
                   >
                     {/* Date numbers */}
-                    <div className="grid grid-cols-7 relative">
+                    <div className="grid grid-cols-7 relative calendar-date-row">
                       {week.days.map((date, colIdx) => {
                         const isToday = date.toDateString() === today.toDateString();
                         const isCurrentMonth = date.getMonth() === week.month;
