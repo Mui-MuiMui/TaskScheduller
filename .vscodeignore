@@ -19,3 +19,4 @@ coverage/**
 .git/**
 doc/**
 tmpclaude*cwd
+CLAUDE.md
