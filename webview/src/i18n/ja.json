@@ -2,6 +2,7 @@
   "view.todo": "ToDo",
   "view.kanban": "カンバン",
   "view.gantt": "ガント",
+  "view.calendar": "カレンダー",
   "task.project": "プロジェクト",
   "task.selectProject": "プロジェクトを選択",
   "task.title": "タイトル",
@@ -79,5 +80,8 @@
   "filter.logic.or": "OR",
   "filter.field": "フィールド",
   "filter.value": "値",
-  "filter.activeCount": "{0}件のフィルターが有効"
+  "filter.activeCount": "{0}件のフィルターが有効",
+  "calendar.month": "月",
+  "calendar.week": "週",
+  "calendar.today": "今日"
 }

@@ -83,7 +83,7 @@ export interface UpdateTaskDto extends Partial<CreateTaskDto> {
   sortOrder?: number;
 }
 
-export type ViewType = 'todo' | 'kanban' | 'gantt';
+export type ViewType = 'todo' | 'kanban' | 'gantt' | 'calendar';
 
 // KanbanColumn entity
 export interface KanbanColumn {

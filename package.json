@@ -2,7 +2,7 @@
   "name": "taskscheduller",
   "displayName": "TaskScheduller",
   "description": "Task management with Todo list, Kanban board, and Gantt chart views",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "publisher": "mui-muimui",
   "license": "MIT",
   "icon": "resources/icons/icon.png",
@@ -56,6 +56,11 @@
         "category": "TaskScheduller"
       },
       {
+        "command": "taskScheduller.switchToCalendar",
+        "title": "%command.switchToCalendar%",
+        "category": "TaskScheduller"
+      },
+      {
         "command": "taskScheduller.openProject",
         "title": "%command.openProject%",
         "category": "TaskScheduller"
@@ -98,7 +103,8 @@
           "enum": [
             "todo",
             "kanban",
-            "gantt"
+            "gantt",
+            "calendar"
           ],
           "description": "%config.defaultView%"
         }

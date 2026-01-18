@@ -42,6 +42,13 @@ export function registerCommands(
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('taskScheduller.switchToCalendar', () => {
+      provider.show();
+      provider.sendCommand('SWITCH_VIEW', { view: 'calendar' });
+    })
+  );
+
   // Open specific project
   context.subscriptions.push(
     vscode.commands.registerCommand('taskScheduller.openProject', (projectId: string) => {

@@ -21,11 +21,13 @@ import {
 import { TodoView } from '@/components/todo/TodoView';
 import { KanbanView } from '@/components/kanban/KanbanView';
 import { GanttView } from '@/components/gantt/GanttView';
+import { CalendarView } from '@/components/calendar/CalendarView';
 import { TaskFormDialog } from '@/components/common/TaskFormDialog';
 import {
   ListTodo,
   Columns3,
   GanttChart,
+  Calendar,
   Plus,
   MoreVertical,
   Download,
@@ -85,6 +87,10 @@ function App() {
             <TabsTrigger value="gantt" className="gap-2 px-4 py-2 text-sm">
               <GanttChart className="h-5 w-5" />
               <span className="hidden sm:inline">{t('view.gantt')}</span>
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="gap-2 px-4 py-2 text-sm">
+              <Calendar className="h-5 w-5" />
+              <span className="hidden sm:inline">{t('view.calendar')}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -149,6 +155,10 @@ function App() {
 
         <TabsContent value="gantt" className="flex-1 min-h-0 mt-0 overflow-hidden">
           <GanttView />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="flex-1 min-h-0 mt-0 overflow-hidden">
+          <CalendarView />
         </TabsContent>
       </Tabs>
 
